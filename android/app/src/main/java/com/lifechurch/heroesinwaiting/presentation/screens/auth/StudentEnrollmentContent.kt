@@ -10,6 +10,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lifechurch.heroesinwaiting.data.model.*
 import com.lifechurch.heroesinwaiting.presentation.components.*
+import com.lifechurch.heroesinwaiting.presentation.theme.HeroesSpacing
 import com.lifechurch.heroesinwaiting.presentation.theme.StudentEngagementTextStyle
 import com.lifechurch.heroesinwaiting.presentation.viewmodel.AuthViewModel
 
