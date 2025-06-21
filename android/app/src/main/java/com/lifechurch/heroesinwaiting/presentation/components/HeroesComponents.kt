@@ -1,165 +1,150 @@
 package com.lifechurch.heroesinwaiting.presentation.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.lifechurch.heroesinwaiting.presentation.theme.*
 
-/**
- * Age-appropriate UI components for Heroes in Waiting
- * All components follow 48dp+ touch target requirements for elementary students
- */
+// Age-appropriate UI components for grades 4-6
+// All touch targets are 48dp+ for accessibility
+// Bright, engaging colors and large, clear text
 
-/**
- * Large, colorful button suitable for elementary students
- * Minimum 48dp height with generous padding
- */
 @Composable
-fun HeroesLargeButton(
+fun HeroButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    isLoading: Boolean = false,
-    colors: ButtonColors = ButtonDefaults.buttonColors(
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
-    )
+    icon: ImageVector? = null,
+    backgroundColor: Color = MaterialTheme.colorScheme.primary,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary
 ) {
     Button(
         onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp), // Ensures minimum touch target
-        enabled = enabled && !isLoading,
-        colors = colors,
-        shape = StudentButtonShape,
-        contentPadding = PaddingValues(16.dp)
+            .heightIn(min = 56.dp) // Larger than standard 48dp for young users
+            .fillMaxWidth(),
+        enabled = enabled,
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp,
+            disabledElevation = 0.dp
+        )
     ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = 2.dp
-            )
-        } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
             Text(
                 text = text,
-                style = StudentButtonTextStyle,
+                fontSize = 18.sp, // Large text for young readers
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
         }
     }
 }
 
-/**
- * Secondary button with outline style
- */
 @Composable
-fun HeroesSecondaryButton(
-    text: String,
+fun HeroCard(
+    title: String,
+    subtitle: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    icon: ImageVector? = null,
+    backgroundColor: Color = MaterialTheme.colorScheme.surface,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
-    OutlinedButton(
-        onClick = onClick,
+    Card(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp),
-        enabled = enabled,
-        shape = StudentButtonShape,
-        contentPadding = PaddingValues(16.dp),
-        border = ButtonDefaults.outlinedButtonBorder.copy(
-            width = 2.dp // Thicker border for visibility
-        )
-    ) {
-        Text(
-            text = text,
-            style = StudentButtonTextStyle,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-/**
- * Danger/warning button with red coloring
- */
-@Composable
-fun HeroesDangerButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp),
-        enabled = enabled,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = HeroesRed,
-            contentColor = HeroesWhite
+            .clickable(
+                role = Role.Button,
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(20.dp), // Extra rounded for friendly feel
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor
         ),
-        shape = StudentButtonShape,
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        Text(
-            text = text,
-            style = StudentButtonTextStyle,
-            textAlign = TextAlign.Center
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 6.dp,
+            pressedElevation = 12.dp
         )
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp) // Large padding for touch-friendly design
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp), // Large icon
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = contentColor
+            )
+            
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = contentColor.copy(alpha = 0.7f)
+                )
+            }
+        }
     }
 }
 
-/**
- * Card component with age-appropriate styling
- */
 @Composable
-fun HeroesCard(
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    colors: CardColors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface
-    ),
-    elevation: CardElevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-    content: @Composable ColumnScope.() -> Unit
-) {
-    if (onClick != null) {
-        Card(
-            onClick = onClick,
-            modifier = modifier,
-            colors = colors,
-            elevation = elevation,
-            shape = StudentCardShape
-        ) {
-            content()
-        }
-    } else {
-        Card(
-            modifier = modifier,
-            colors = colors,
-            elevation = elevation,
-            shape = StudentCardShape
-        ) {
-            content()
-        }
-    }
-}
-
-/**
- * Text input field with large, friendly styling
- */
-@Composable
-fun HeroesTextField(
+fun HeroTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
@@ -167,203 +152,269 @@ fun HeroesTextField(
     placeholder: String? = null,
     isError: Boolean = false,
     errorMessage: String? = null,
-    enabled: Boolean = true,
-    singleLine: Boolean = true
+    leadingIcon: ImageVector? = null,
+    isPassword: Boolean = false
 ) {
     Column(modifier = modifier) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            label = { Text(label) },
-            placeholder = placeholder?.let { { Text(it) } },
+            label = {
+                Text(
+                    text = label,
+                    fontSize = 16.sp // Large label text
+                )
+            },
+            placeholder = placeholder?.let { 
+                { Text(
+                    text = it,
+                    fontSize = 16.sp
+                ) }
+            },
+            leadingIcon = leadingIcon?.let {
+                {
+                    Icon(
+                        imageVector = it,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            },
+            isError = isError,
+            visualTransformation = if (isPassword) {
+                androidx.compose.ui.text.input.PasswordVisualTransformation()
+            } else {
+                androidx.compose.ui.text.input.VisualTransformation.None
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp), // Larger touch target
-            enabled = enabled,
-            singleLine = singleLine,
-            isError = isError,
-            shape = StudentInputShape,
-            textStyle = MaterialTheme.typography.bodyLarge // Larger text for readability
+                .heightIn(min = 64.dp), // Large touch target
+            shape = RoundedCornerShape(12.dp),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                errorBorderColor = MaterialTheme.colorScheme.error
+            )
         )
         
         if (isError && errorMessage != null) {
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = errorMessage,
                 color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 16.dp)
             )
         }
     }
 }
 
-/**
- * Loading indicator with friendly styling
- */
 @Composable
-fun HeroesLoadingIndicator(
-    modifier: Modifier = Modifier,
-    message: String = "Loading..."
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(48.dp),
-            color = MaterialTheme.colorScheme.primary,
-            strokeWidth = 4.dp
-        )
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-/**
- * Error display component
- */
-@Composable
-fun HeroesErrorDisplay(
-    message: String,
-    onRetry: (() -> Unit)? = null,
+fun EmotionSelector(
+    selectedEmotion: String?,
+    onEmotionSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = HeroesLightRed,
-            contentColor = HeroesRedDark
-        ),
-        shape = StudentCardShape
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+    val emotions = listOf(
+        "excited" to "🌟",
+        "happy" to "😊", 
+        "calm" to "🌸",
+        "curious" to "🔍",
+        "nervous" to "🤗",
+        "tired" to "💚"
+    )
+    
+    Column(modifier = modifier) {
+        Text(
+            text = "How are you feeling?",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Oops! Something went wrong",
-                style = MaterialTheme.typography.titleMedium,
-                color = HeroesRedDark,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = HeroesRedDark,
-                textAlign = TextAlign.Center
-            )
-            if (onRetry != null) {
-                Button(
-                    onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = HeroesRed,
-                        contentColor = HeroesWhite
+            items(emotions.size) { index ->
+                val (emotion, emoji) = emotions[index]
+                val isSelected = selectedEmotion == emotion
+                
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onEmotionSelected(emotion) }
+                        .heightIn(min = 80.dp), // Large touch target
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        }
                     ),
-                    shape = StudentButtonShape
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = if (isSelected) 8.dp else 2.dp
+                    ),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Try Again")
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = emoji,
+                            fontSize = 32.sp // Large emoji
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = emotion.replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-/**
- * Success display component
- */
 @Composable
-fun HeroesSuccessDisplay(
-    message: String,
+fun ProgressHero(
+    progress: Float,
+    totalSteps: Int,
+    currentStep: Int,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = HeroesLightGreen,
-            contentColor = HeroesGreenDark
-        ),
-        shape = StudentCardShape
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        // Hero progress indicator
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(RoundedCornerShape(60.dp))
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            HeroesGradientStart.copy(alpha = 0.3f),
+                            HeroesGradientEnd.copy(alpha = 0.1f)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "Great job!",
-                style = MaterialTheme.typography.titleMedium,
-                color = HeroesGreenDark,
-                textAlign = TextAlign.Center
+            CircularProgressIndicator(
+                progress = progress,
+                modifier = Modifier.size(100.dp),
+                strokeWidth = 8.dp,
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
+            
             Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = HeroesGreenDark,
-                textAlign = TextAlign.Center
+                text = "🦸‍♂️", // Hero emoji
+                fontSize = 40.sp
             )
         }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Step $currentStep of $totalSteps",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        Text(
+            text = "You're becoming a real hero!",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
-/**
- * Section header for organizing content
- */
 @Composable
-fun HeroesSectionHeader(
-    text: String,
+fun LoadingHero(
+    message: String = "Loading your hero adventure...",
     modifier: Modifier = Modifier
 ) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.headlineSmall,
-        color = MaterialTheme.colorScheme.primary,
+    Column(
         modifier = modifier.fillMaxWidth(),
-        textAlign = TextAlign.Start
-    )
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(48.dp),
+            color = MaterialTheme.colorScheme.primary,
+            strokeWidth = 4.dp
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
-/**
- * Divider with friendly styling
- */
 @Composable
-fun HeroesDivider(
+fun ErrorHero(
+    title: String = "Oops!",
+    message: String,
+    onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    HorizontalDivider(
-        modifier = modifier,
-        thickness = 2.dp,
-        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    )
-}
-
-/**
- * Spacer components for consistent spacing
- */
-@Composable
-fun HeroesVerticalSpacer(
-    size: HeroesSpacing = HeroesSpacing.Medium
-) {
-    Spacer(modifier = Modifier.height(size.dp))
-}
-
-@Composable
-fun HeroesHorizontalSpacer(
-    size: HeroesSpacing = HeroesSpacing.Medium
-) {
-    Spacer(modifier = Modifier.width(size.dp))
-}
-
-enum class HeroesSpacing(val dp: androidx.compose.ui.unit.Dp) {
-    XSmall(4.dp),
-    Small(8.dp),
-    Medium(16.dp),
-    Large(24.dp),
-    XLarge(32.dp),
-    XXLarge(48.dp)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "😔", // Sad emoji
+            fontSize = 64.sp
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
+        if (onRetry != null) {
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            HeroButton(
+                text = "Try Again",
+                onClick = onRetry,
+                icon = Icons.Default.Refresh,
+                backgroundColor = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
 }

@@ -1,130 +1,68 @@
 package com.lifechurch.heroesinwaiting.presentation.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
+import androidx.compose.ui.graphics.Color
 
-/**
- * Age-appropriate color schemes for Heroes in Waiting
- * Bright, colorful, and engaging for elementary students (grades 4-6)
- * Also accessible and professional for facilitators
- */
+// Heroes in Waiting theme optimized for grades 4-6
+// Bright, engaging, and accessible design
 
-private val DarkColorScheme = darkColorScheme(
+private val HeroesLightColorScheme = lightColorScheme(
+    // Primary colors - Purple for heroes and heroic actions
     primary = HeroesPurple,
-    onPrimary = HeroesWhite,
-    primaryContainer = HeroesPurpleDark,
-    onPrimaryContainer = HeroesLightPurple,
-    secondary = HeroesGreen,
-    onSecondary = HeroesWhite,
-    secondaryContainer = HeroesGreenDark,
-    onSecondaryContainer = HeroesLightGreen,
-    tertiary = HeroesOrange,
-    onTertiary = HeroesWhite,
-    tertiaryContainer = HeroesOrangeDark,
-    onTertiaryContainer = HeroesLightOrange,
-    error = HeroesRed,
-    onError = HeroesWhite,
-    errorContainer = HeroesRedDark,
-    onErrorContainer = HeroesLightRed,
-    background = HeroesDarkGray,
-    onBackground = HeroesLightGray,
-    surface = HeroesDarkGray,
-    onSurface = HeroesLightGray,
-    surfaceVariant = HeroesGray,
-    onSurfaceVariant = HeroesLightGray,
-    outline = HeroesGray,
-    outlineVariant = HeroesDarkGray,
-    scrim = HeroesBlack,
-    inverseSurface = HeroesLightGray,
-    inverseOnSurface = HeroesDarkGray,
-    inversePrimary = HeroesLightPurple,
-    surfaceDim = HeroesDarkGray,
-    surfaceBright = HeroesGray,
-    surfaceContainerLowest = HeroesBlack,
-    surfaceContainerLow = HeroesDarkGray,
-    surfaceContainer = HeroesGray,
-    surfaceContainerHigh = HeroesLightGray,
-    surfaceContainerHighest = HeroesWhite
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = HeroesPurple,
-    onPrimary = HeroesWhite,
-    primaryContainer = HeroesLightPurple,
+    onPrimary = HeroesTextOnColor,
+    primaryContainer = HeroesPurpleLight,
     onPrimaryContainer = HeroesPurpleDark,
+    
+    // Secondary colors - Green for growth and learning
     secondary = HeroesGreen,
-    onSecondary = HeroesWhite,
-    secondaryContainer = HeroesLightGreen,
+    onSecondary = HeroesTextOnColor,
+    secondaryContainer = HeroesGreenLight,
     onSecondaryContainer = HeroesGreenDark,
+    
+    // Tertiary colors - Orange for energy and enthusiasm
     tertiary = HeroesOrange,
-    onTertiary = HeroesWhite,
-    tertiaryContainer = HeroesLightOrange,
+    onTertiary = HeroesTextOnColor,
+    tertiaryContainer = HeroesOrangeLight,
     onTertiaryContainer = HeroesOrangeDark,
-    error = HeroesRed,
-    onError = HeroesWhite,
-    errorContainer = HeroesLightRed,
-    onErrorContainer = HeroesRedDark,
-    background = HeroesWhite,
-    onBackground = HeroesBlack,
-    surface = HeroesWhite,
-    onSurface = HeroesBlack,
-    surfaceVariant = HeroesLightGray,
-    onSurfaceVariant = HeroesDarkGray,
+    
+    // Error colors
+    error = HeroesError,
+    onError = HeroesTextOnColor,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+    
+    // Background colors
+    background = HeroesBackground,
+    onBackground = HeroesTextPrimary,
+    
+    // Surface colors
+    surface = HeroesSurface,
+    onSurface = HeroesTextPrimary,
+    surfaceVariant = HeroesGrayLight,
+    onSurfaceVariant = HeroesTextSecondary,
+    
+    // Outline colors
     outline = HeroesGray,
-    outlineVariant = HeroesLightGray,
-    scrim = HeroesBlack,
-    inverseSurface = HeroesDarkGray,
-    inverseOnSurface = HeroesWhite,
-    inversePrimary = HeroesLightPurple,
-    surfaceDim = HeroesLightGray,
-    surfaceBright = HeroesWhite,
-    surfaceContainerLowest = HeroesWhite,
-    surfaceContainerLow = HeroesLightGray,
-    surfaceContainer = HeroesLightGray,
-    surfaceContainerHigh = HeroesLightGray,
-    surfaceContainerHighest = HeroesGray
+    outlineVariant = HeroesGrayLight,
+    
+    // Additional semantic colors
+    scrim = Color(0x66000000),
+    inverseSurface = HeroesGrayDark,
+    inverseOnSurface = HeroesTextOnColor,
+    inversePrimary = HeroesPurpleLight,
+    
+    // Surface tint for dynamic theming
+    surfaceTint = HeroesPurple
 )
 
 @Composable
 fun HeroesInWaitingTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Disabled for consistent branding
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-    
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
-        }
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = HeroesLightColorScheme,
         typography = HeroesTypography,
         shapes = HeroesShapes,
         content = content
