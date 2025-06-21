@@ -47,3 +47,9 @@ val HeroesWarning = HeroesOrange
 // Fun, colorful gradients for special elements
 val HeroesGradientStart = HeroesPurple
 val HeroesGradientEnd = HeroesBlue
+
+// Additional colors for specific use cases
+val HeroesWhite = Color(0xFFFFFFFF)
+val HeroesLightPurple = HeroesPurpleLight.copy(alpha = 0.1f)
+val HeroesLightGreen = HeroesGreenLight.copy(alpha = 0.1f)
+val HeroesLightOrange = HeroesOrangeLight.copy(alpha = 0.1f)

@@ -23,3 +23,6 @@ val HeroesShapes = Shapes(
     // Extra large - for special containers and dialogs
     extraLarge = RoundedCornerShape(32.dp)
 )
+
+// Specific shapes for UI elements
+val AlertDialogShape = RoundedCornerShape(24.dp)

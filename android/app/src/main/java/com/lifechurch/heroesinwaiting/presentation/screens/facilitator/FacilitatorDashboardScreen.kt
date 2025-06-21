@@ -18,7 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lifechurch.heroesinwaiting.presentation.components.*
-import com.lifechurch.heroesinwaiting.presentation.theme.FacilitatorProfessionalTextStyle
+import com.lifechurch.heroesinwaiting.presentation.theme.*
 import com.lifechurch.heroesinwaiting.presentation.viewmodel.AuthViewModel
 
 /**

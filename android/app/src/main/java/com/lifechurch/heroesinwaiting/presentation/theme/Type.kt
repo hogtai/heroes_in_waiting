@@ -141,3 +141,22 @@ val HeroesTypography = Typography(
         color = HeroesTextSecondary
     )
 )
+
+// Additional text styles for specific UI elements
+val StudentEngagementTextStyle = TextStyle(
+    fontFamily = FontFamily.Default,
+    fontWeight = FontWeight.Bold,
+    fontSize = 24.sp,
+    lineHeight = 32.sp,
+    letterSpacing = 0.sp,
+    color = HeroesTextPrimary
+)
+
+val FacilitatorProfessionalTextStyle = TextStyle(
+    fontFamily = FontFamily.Default,
+    fontWeight = FontWeight.Medium,
+    fontSize = 16.sp,
+    lineHeight = 24.sp,
+    letterSpacing = 0.1.sp,
+    color = HeroesTextPrimary
+)
