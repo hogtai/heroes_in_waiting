@@ -9,46 +9,35 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class Classroom(
     val id: String,
-    val facilitatorId: String,
     val name: String,
     val description: String? = null,
-    val classroomCode: String, // 6-digit code for student enrollment
+    val facilitatorId: String,
     val grade: Grade,
+    val classroomCode: String, // 6-digit code for student enrollment
+    val isActive: Boolean = true,
     val maxStudents: Int = 30,
     val currentStudentCount: Int = 0,
-    val isActive: Boolean = true,
     val createdAt: String,
     val updatedAt: String? = null,
     // Session management
+    val hasActiveSession: Boolean = false,
     val currentSessionId: String? = null,
-    val isSessionActive: Boolean = false,
-    val lastSessionAt: String? = null,
-    // Progress tracking
     val currentLessonId: String? = null,
-    val completedLessons: List<String> = emptyList(),
-    val totalLessons: Int = 12,
-    val progressPercentage: Float = 0f,
+    val sessionStartTime: String? = null,
     // Settings
-    val allowLateJoining: Boolean = true,
-    val requireAttendanceCode: Boolean = false,
-    val enableChatFeatures: Boolean = false,
-    val enablePeerInteraction: Boolean = true
+    val allowLateJoin: Boolean = true,
+    val requiresApproval: Boolean = false,
+    val isPublic: Boolean = true
 ) : Parcelable {
     
     val isClassroomFull: Boolean
         get() = currentStudentCount >= maxStudents
     
     val hasStartedProgram: Boolean
-        get() = completedLessons.isNotEmpty() || currentLessonId != null
-    
-    val nextLessonNumber: Int
-        get() = completedLessons.size + 1
-    
-    val remainingLessons: Int
-        get() = totalLessons - completedLessons.size
+        get() = currentLessonId != null
     
     val canStartNewSession: Boolean
-        get() = isActive && !isSessionActive && currentStudentCount > 0
+        get() = isActive && !hasActiveSession && currentStudentCount > 0
 }
 
 /**
