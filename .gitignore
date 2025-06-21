@@ -96,3 +96,7 @@ docker-compose.override.yml
 *.db
 *.sqlite
 *.sqlite3
+
+# AI Agent files and documentation
+agents/
+CLAUDE.md
