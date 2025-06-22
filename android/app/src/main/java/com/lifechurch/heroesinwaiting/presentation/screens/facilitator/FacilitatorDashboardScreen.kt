@@ -17,9 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifechurch.heroesinwaiting.presentation.components.*
 import com.lifechurch.heroesinwaiting.presentation.theme.*
 import com.lifechurch.heroesinwaiting.presentation.viewmodel.AuthViewModel
+import com.lifechurch.heroesinwaiting.presentation.viewmodel.FacilitatorDashboardViewModel
+import com.lifechurch.heroesinwaiting.presentation.viewmodel.FacilitatorDashboardEvent
 
 /**
  * Facilitator dashboard with professional interface
@@ -29,9 +32,35 @@ import com.lifechurch.heroesinwaiting.presentation.viewmodel.AuthViewModel
 @Composable
 fun FacilitatorDashboardScreen(
     onLogout: () -> Unit,
-    authViewModel: AuthViewModel = hiltViewModel()
+    onNavigateToCreateClassroom: () -> Unit,
+    onNavigateToLessons: () -> Unit,
+    onNavigateToAnalytics: () -> Unit,
+    authViewModel: AuthViewModel = hiltViewModel(),
+    dashboardViewModel: FacilitatorDashboardViewModel = hiltViewModel()
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
+    
+    // Collect state from ViewModel
+    val uiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+    val classrooms by dashboardViewModel.classrooms.collectAsStateWithLifecycle()
+    val dashboardStats by dashboardViewModel.dashboardStats.collectAsStateWithLifecycle()
+    
+    // Handle events
+    LaunchedEffect(Unit) {
+        dashboardViewModel.events.collect { event ->
+            when (event) {
+                is FacilitatorDashboardEvent.NavigateToCreateClassroom -> onNavigateToCreateClassroom()
+                is FacilitatorDashboardEvent.NavigateToLessons -> onNavigateToLessons()
+                is FacilitatorDashboardEvent.NavigateToAnalytics -> onNavigateToAnalytics()
+                is FacilitatorDashboardEvent.NavigateToClassroomDetails -> {
+                    // Handle classroom details navigation
+                }
+                is FacilitatorDashboardEvent.ClassroomCreated -> {
+                    // Handle classroom creation success
+                }
+            }
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -56,7 +85,7 @@ fun FacilitatorDashboardScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* Navigate to create classroom */ },
+                onClick = onNavigateToCreateClassroom,
                 containerColor = MaterialTheme.colorScheme.secondary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Create Classroom")
@@ -64,27 +93,57 @@ fun FacilitatorDashboardScreen(
         }
     ) { paddingValues ->
         
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                WelcomeSection()
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                HeroesLoadingIndicator(message = "Loading your dashboard...")
             }
-            
-            item {
-                QuickActionsSection()
+        } else if (uiState.showErrorState) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                HeroesErrorDisplay(
+                    message = uiState.error ?: "Something went wrong",
+                    onRetry = { dashboardViewModel.retry() }
+                )
             }
-            
-            item {
-                RecentClassroomsSection()
-            }
-            
-            item {
-                AnalyticsOverviewSection()
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    WelcomeSection(dashboardViewModel.getWelcomeMessage())
+                }
+                
+                item {
+                    QuickActionsSection(
+                        onNavigateToCreateClassroom = { dashboardViewModel.navigateToCreateClassroom() },
+                        onNavigateToLessons = { dashboardViewModel.navigateToLessons() }
+                    )
+                }
+                
+                item {
+                    RecentClassroomsSection(
+                        classrooms = classrooms,
+                        hasClassrooms = dashboardViewModel.hasClassrooms(),
+                        onNavigateToCreateClassroom = { dashboardViewModel.navigateToCreateClassroom() },
+                        onClassroomSelected = { classroom -> dashboardViewModel.onClassroomSelected(classroom) }
+                    )
+                }
+                
+                item {
+                    AnalyticsOverviewSection(
+                        dashboardStats = dashboardStats,
+                        onNavigateToAnalytics = { dashboardViewModel.navigateToAnalytics() }
+                    )
+                }
             }
         }
     }
@@ -115,14 +174,14 @@ fun FacilitatorDashboardScreen(
 }
 
 @Composable
-private fun WelcomeSection() {
+private fun WelcomeSection(welcomeMessage: String) {
     HeroesCard {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Welcome back!",
+                text = welcomeMessage,
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -136,7 +195,10 @@ private fun WelcomeSection() {
 }
 
 @Composable
-private fun QuickActionsSection() {
+private fun QuickActionsSection(
+    onNavigateToCreateClassroom: () -> Unit,
+    onNavigateToLessons: () -> Unit
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -148,7 +210,7 @@ private fun QuickActionsSection() {
         ) {
             // Create Classroom
             Card(
-                onClick = { /* Navigate to create classroom */ },
+                onClick = onNavigateToCreateClassroom,
                 modifier = Modifier.weight(1f),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -176,7 +238,7 @@ private fun QuickActionsSection() {
             
             // Browse Lessons
             Card(
-                onClick = { /* Navigate to lessons */ },
+                onClick = onNavigateToLessons,
                 modifier = Modifier.weight(1f),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -206,34 +268,56 @@ private fun QuickActionsSection() {
 }
 
 @Composable
-private fun RecentClassroomsSection() {
+private fun RecentClassroomsSection(
+    classrooms: List<com.lifechurch.heroesinwaiting.data.model.Classroom>,
+    hasClassrooms: Boolean,
+    onNavigateToCreateClassroom: () -> Unit,
+    onClassroomSelected: (com.lifechurch.heroesinwaiting.data.model.Classroom) -> Unit
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         HeroesSectionHeader("Your Classrooms")
         
-        // Placeholder for actual classroom data
-        HeroesCard {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "No classrooms yet",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+        if (!hasClassrooms) {
+            // Empty state
+            HeroesCard {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "No classrooms yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Create your first classroom to get started with Heroes in Waiting lessons.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    HeroesVerticalSpacer(HeroesSpacing.Small)
+                    
+                    HeroesLargeButton(
+                        text = "Create My First Classroom",
+                        onClick = onNavigateToCreateClassroom
+                    )
+                }
+            }
+        } else {
+            // Show classrooms
+            classrooms.take(3).forEach { classroom ->
+                ClassroomCard(
+                    classroom = classroom,
+                    onClick = { onClassroomSelected(classroom) }
                 )
-                Text(
-                    text = "Create your first classroom to get started with Heroes in Waiting lessons.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                HeroesVerticalSpacer(HeroesSpacing.Small)
-                
-                HeroesLargeButton(
-                    text = "Create My First Classroom",
-                    onClick = { /* Navigate to create classroom */ }
+            }
+            
+            if (classrooms.size > 3) {
+                HeroesSecondaryButton(
+                    text = "View All Classrooms (${classrooms.size})",
+                    onClick = { /* Navigate to all classrooms */ }
                 )
             }
         }
@@ -241,7 +325,57 @@ private fun RecentClassroomsSection() {
 }
 
 @Composable
-private fun AnalyticsOverviewSection() {
+private fun ClassroomCard(
+    classroom: com.lifechurch.heroesinwaiting.data.model.Classroom,
+    onClick: () -> Unit
+) {
+    HeroesCard(onClick = onClick) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = classroom.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Code: ${classroom.classroomCode}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Text(
+                text = "${classroom.currentStudentCount} students • Grade ${classroom.grade.displayName}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            if (classroom.hasActiveSession) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Badge {
+                        Text("Active Session", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnalyticsOverviewSection(
+    dashboardStats: com.lifechurch.heroesinwaiting.data.repository.FacilitatorDashboardStats?,
+    onNavigateToAnalytics: () -> Unit
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -263,7 +397,7 @@ private fun AnalyticsOverviewSection() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "0",
+                        text = "${dashboardStats?.totalStudents ?: 0}",
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onTertiaryContainer
                     )
@@ -280,7 +414,9 @@ private fun AnalyticsOverviewSection() {
             Card(
                 modifier = Modifier.weight(1f),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
+                    containerColor = if ((dashboardStats?.activeSessions ?: 0) > 0) 
+                        MaterialTheme.colorScheme.primaryContainer 
+                    else MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
                 Column(
@@ -288,14 +424,74 @@ private fun AnalyticsOverviewSection() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "0",
+                        text = "${dashboardStats?.activeSessions ?: 0}",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
+                        color = if ((dashboardStats?.activeSessions ?: 0) > 0) 
+                            MaterialTheme.colorScheme.onPrimaryContainer 
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "Active Sessions",
                         style = FacilitatorProfessionalTextStyle,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        color = if ((dashboardStats?.activeSessions ?: 0) > 0) 
+                            MaterialTheme.colorScheme.onPrimaryContainer 
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        
+        // Additional stats row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Total Classrooms
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "${dashboardStats?.totalClassrooms ?: 0}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text = "Classrooms",
+                        style = FacilitatorProfessionalTextStyle,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            
+            // Completed Lessons
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = HeroesLightGreen
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "${dashboardStats?.completedLessons ?: 0}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = HeroesGreenDark
+                    )
+                    Text(
+                        text = "Lessons Delivered",
+                        style = FacilitatorProfessionalTextStyle,
+                        color = HeroesGreenDark,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -305,7 +501,7 @@ private fun AnalyticsOverviewSection() {
         // View Analytics Button
         HeroesSecondaryButton(
             text = "View Detailed Analytics",
-            onClick = { /* Navigate to analytics */ }
+            onClick = onNavigateToAnalytics
         )
     }
 }

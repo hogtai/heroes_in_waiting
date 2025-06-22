@@ -105,6 +105,15 @@ fun HeroesInWaitingApp() {
                         navController.navigate(Screen.Auth.route) {
                             popUpTo(Screen.FacilitatorDashboard.route) { inclusive = true }
                         }
+                    },
+                    onNavigateToCreateClassroom = {
+                        navController.navigate(Screen.CreateClassroom.route)
+                    },
+                    onNavigateToLessons = {
+                        navController.navigate(Screen.LessonManagement.route)
+                    },
+                    onNavigateToAnalytics = {
+                        navController.navigate(Screen.Analytics.route)
                     }
                 )
             }
@@ -116,7 +125,54 @@ fun HeroesInWaitingApp() {
                         navController.navigate(Screen.Auth.route) {
                             popUpTo(Screen.StudentDashboard.route) { inclusive = true }
                         }
+                    },
+                    onNavigateToHelp = {
+                        navController.navigate(Screen.StudentHelp.route)
+                    },
+                    onNavigateToEmotionalCheckin = {
+                        navController.navigate(Screen.EmotionalCheckin.route)
                     }
+                )
+            }
+            
+            // Placeholder screens for navigation - these will be implemented in future phases
+            composable(Screen.CreateClassroom.route) {
+                PlaceholderScreen(
+                    title = "Create Classroom",
+                    message = "Classroom creation screen will be implemented in the next phase.",
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            
+            composable(Screen.LessonManagement.route) {
+                PlaceholderScreen(
+                    title = "Lesson Management",
+                    message = "Lesson management screen will be implemented in the next phase.",
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            
+            composable(Screen.Analytics.route) {
+                PlaceholderScreen(
+                    title = "Analytics",
+                    message = "Analytics dashboard will be implemented in the next phase.",
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            
+            composable(Screen.StudentHelp.route) {
+                PlaceholderScreen(
+                    title = "Help",
+                    message = "Help screen with tutorials and FAQs will be implemented in the next phase.",
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            
+            composable(Screen.EmotionalCheckin.route) {
+                PlaceholderScreen(
+                    title = "How Are You Feeling?",
+                    message = "Emotional check-in screen will be implemented in the next phase.",
+                    onBack = { navController.popBackStack() }
                 )
             }
         }
