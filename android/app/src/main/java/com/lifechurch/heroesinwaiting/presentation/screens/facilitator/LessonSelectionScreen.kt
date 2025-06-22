@@ -191,7 +191,15 @@ fun LessonSelectionScreen(
                     else -> {
                         LessonsGrid(
                             lessons = lessons,
-                            onLessonClick = viewModel::navigateToLessonDetail
+                            onLessonClick = viewModel::navigateToLessonDetail,
+                            hasMorePages = uiState.hasMorePages,
+                            isLoadingMore = uiState.isLoadingMore,
+                            onLoadMore = viewModel::loadMoreLessons
+                        )
+                        
+                        // Show pagination info
+                        PaginationInfo(
+                            paginationInfo = viewModel.getPaginationInfo()
                         )
                     }
                 }
@@ -525,7 +533,10 @@ private fun LessonFilterChips(
 @Composable
 private fun LessonsGrid(
     lessons: List<Lesson>,
-    onLessonClick: (String) -> Unit
+    onLessonClick: (String) -> Unit,
+    hasMorePages: Boolean = false,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {}
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(300.dp),
@@ -533,13 +544,94 @@ private fun LessonsGrid(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        items(lessons) { lesson ->
+        // Lesson items with optimized keys for performance
+        items(
+            items = lessons,
+            key = { lesson -> lesson.id } // Use lesson ID as key for efficient recomposition
+        ) { lesson ->
             LessonCard(
                 lesson = lesson,
                 onClick = { onLessonClick(lesson.id) }
             )
         }
+        
+        // Load more indicator
+        if (hasMorePages) {
+            item {
+                LoadMoreIndicator(
+                    isLoading = isLoadingMore,
+                    onLoadMore = onLoadMore
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun LoadMoreIndicator(
+    isLoading: Boolean,
+    onLoadMore: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Loading more lessons...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                TextButton(
+                    onClick = onLoadMore,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Load More Lessons")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaginationInfo(
+    paginationInfo: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = paginationInfo,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
 }
 
 @Composable

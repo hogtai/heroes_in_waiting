@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 /**
  * ViewModel for Lesson Selection Screen
- * Manages lesson loading, search, filtering, and navigation with enhanced error handling
+ * Manages lesson loading, search, filtering, and navigation with enhanced error handling and performance optimizations
  */
 @HiltViewModel
 class LessonSelectionViewModel @Inject constructor(
@@ -25,15 +25,33 @@ class LessonSelectionViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LessonSelectionUiState())
     val uiState: StateFlow<LessonSelectionUiState> = _uiState.asStateFlow()
     
-    // Search and Filter State
+    // Search and Filter State with debouncing
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    
+    // Debounced search query for performance
+    private val debouncedSearchQuery = _searchQuery
+        .debounce(300) // 300ms debounce for search performance
+        .distinctUntilChanged()
     
     private val _selectedGrade = MutableStateFlow<Grade?>(null)
     val selectedGrade: StateFlow<Grade?> = _selectedGrade.asStateFlow()
     
     private val _selectedCategory = MutableStateFlow<LessonCategory?>(null)
     val selectedCategory: StateFlow<LessonCategory?> = _selectedCategory.asStateFlow()
+    
+    // Pagination State
+    private val _currentPage = MutableStateFlow(0)
+    val currentPage: StateFlow<Int> = _currentPage.asStateFlow()
+    
+    private val _pageSize = MutableStateFlow(20) // Load 20 lessons per page
+    val pageSize: StateFlow<Int> = _pageSize.asStateFlow()
+    
+    private val _hasMorePages = MutableStateFlow(true)
+    val hasMorePages: StateFlow<Boolean> = _hasMorePages.asStateFlow()
+    
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
     
     // Network and Offline State
     private val _isOffline = MutableStateFlow(false)
@@ -46,6 +64,9 @@ class LessonSelectionViewModel @Inject constructor(
     private val _retryCount = MutableStateFlow(0)
     private val _isRetrying = MutableStateFlow(false)
     val isRetrying: StateFlow<Boolean> = _isRetrying.asStateFlow()
+    
+    // Performance optimization: Cache filtered results
+    private val _cachedFilteredLessons = MutableStateFlow<List<Lesson>>(emptyList())
     
     // Events
     private val _events = MutableSharedFlow<LessonSelectionEvent>()
@@ -65,6 +86,9 @@ class LessonSelectionViewModel @Inject constructor(
                 error = null,
                 hasCachedData = lessons.isNotEmpty()
             )
+            // Reset pagination when lessons change
+            _currentPage.value = 0
+            _hasMorePages.value = lessons.size > _pageSize.value
         }
         .stateIn(
             scope = viewModelScope,
@@ -72,13 +96,61 @@ class LessonSelectionViewModel @Inject constructor(
             initialValue = emptyList()
         )
     
-    // Filtered and searched lessons
+    // Optimized filtered and searched lessons with pagination
     val lessons: StateFlow<List<Lesson>> = combine(
         allLessons,
-        _searchQuery,
+        debouncedSearchQuery, // Use debounced search for performance
         _selectedGrade,
-        _selectedCategory
-    ) { lessons, query, grade, category ->
+        _selectedCategory,
+        _currentPage,
+        _pageSize
+    ) { lessons, query, grade, category, page, pageSize ->
+        // Apply filters efficiently
+        var filteredLessons = applyFilters(lessons, query, grade, category)
+        
+        // Cache filtered results for performance
+        _cachedFilteredLessons.value = filteredLessons
+        
+        // Apply pagination
+        val startIndex = page * pageSize
+        val endIndex = minOf(startIndex + pageSize, filteredLessons.size)
+        
+        // Update pagination state
+        _hasMorePages.value = endIndex < filteredLessons.size
+        
+        // Return paginated results
+        if (startIndex < filteredLessons.size) {
+            filteredLessons.subList(startIndex, endIndex)
+        } else {
+            emptyList()
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+    
+    // Total filtered lessons count for pagination info
+    val totalFilteredCount: StateFlow<Int> = _cachedFilteredLessons.map { it.size }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
+    
+    init {
+        loadLessons()
+    }
+    
+    /**
+     * Efficiently applies filters to lessons
+     */
+    private fun applyFilters(
+        lessons: List<Lesson>,
+        query: String,
+        grade: Grade?,
+        category: LessonCategory?
+    ): List<Lesson> {
         var filteredLessons = lessons
         
         // Apply grade filter
@@ -95,10 +167,11 @@ class LessonSelectionViewModel @Inject constructor(
             }
         }
         
-        // Apply search query
+        // Apply search query with optimized search
         if (query.isNotBlank()) {
             val searchTerm = query.lowercase().trim()
             filteredLessons = filteredLessons.filter { lesson ->
+                // Optimized search: check most likely matches first
                 lesson.title.lowercase().contains(searchTerm) ||
                 lesson.description.lowercase().contains(searchTerm) ||
                 lesson.keyTerms.any { it.lowercase().contains(searchTerm) } ||
@@ -107,15 +180,32 @@ class LessonSelectionViewModel @Inject constructor(
         }
         
         // Sort by lesson number for consistent ordering
-        filteredLessons.sortedBy { it.lessonNumber }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
+        return filteredLessons.sortedBy { it.lessonNumber }
+    }
     
-    init {
-        loadLessons()
+    /**
+     * Loads more lessons (pagination)
+     */
+    fun loadMoreLessons() {
+        if (_isLoadingMore.value || !_hasMorePages.value) return
+        
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+            
+            // Simulate loading delay for smooth UX
+            delay(500)
+            
+            _currentPage.value += 1
+            _isLoadingMore.value = false
+        }
+    }
+    
+    /**
+     * Resets pagination when filters change
+     */
+    private fun resetPagination() {
+        _currentPage.value = 0
+        _hasMorePages.value = true
     }
     
     /**
@@ -243,15 +333,17 @@ class LessonSelectionViewModel @Inject constructor(
         viewModelScope.launch {
             _retryCount.value = 0
             _isOffline.value = false
+            resetPagination()
             loadLessons()
         }
     }
     
     /**
-     * Updates search query
+     * Updates search query with debouncing
      */
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
+        resetPagination() // Reset pagination when search changes
     }
     
     /**
@@ -259,6 +351,7 @@ class LessonSelectionViewModel @Inject constructor(
      */
     fun clearSearch() {
         _searchQuery.value = ""
+        resetPagination()
     }
     
     /**
@@ -266,6 +359,7 @@ class LessonSelectionViewModel @Inject constructor(
      */
     fun updateGradeFilter(grade: Grade?) {
         _selectedGrade.value = grade
+        resetPagination()
     }
     
     /**
@@ -273,6 +367,7 @@ class LessonSelectionViewModel @Inject constructor(
      */
     fun updateCategoryFilter(category: LessonCategory?) {
         _selectedCategory.value = category
+        resetPagination()
     }
     
     /**
@@ -282,6 +377,7 @@ class LessonSelectionViewModel @Inject constructor(
         _selectedGrade.value = null
         _selectedCategory.value = null
         _searchQuery.value = ""
+        resetPagination()
     }
     
     /**
@@ -366,17 +462,35 @@ class LessonSelectionViewModel @Inject constructor(
             }
         }
     }
+    
+    /**
+     * Gets pagination info for display
+     */
+    fun getPaginationInfo(): String {
+        val currentCount = lessons.value.size
+        val totalCount = totalFilteredCount.value
+        val currentPage = _currentPage.value + 1
+        val totalPages = (totalCount + _pageSize.value - 1) / _pageSize.value
+        
+        return if (totalCount > 0) {
+            "Showing ${currentCount} of $totalCount lessons (Page $currentPage of $totalPages)"
+        } else {
+            "No lessons found"
+        }
+    }
 }
 
 /**
- * Enhanced UI state for Lesson Selection screen
+ * Enhanced UI state for Lesson Selection screen with pagination
  */
 data class LessonSelectionUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val hasCachedData: Boolean = false,
     val isOffline: Boolean = false,
-    val lastSyncTime: Long? = null
+    val lastSyncTime: Long? = null,
+    val isLoadingMore: Boolean = false,
+    val hasMorePages: Boolean = true
 ) {
     val showErrorState: Boolean
         get() = !isLoading && error != null
@@ -399,4 +513,5 @@ sealed class LessonSelectionEvent {
     object AuthenticationRequired : LessonSelectionEvent()
     object NetworkError : LessonSelectionEvent()
     object SyncCompleted : LessonSelectionEvent()
+    object LoadMoreLessons : LessonSelectionEvent()
 }

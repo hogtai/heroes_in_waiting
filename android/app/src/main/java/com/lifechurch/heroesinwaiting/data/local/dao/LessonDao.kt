@@ -72,4 +72,13 @@ interface LessonDao {
     
     @Query("UPDATE lessons SET isDownloaded = 0")
     suspend fun clearAllDownloadFlags()
+    
+    @Query("SELECT * FROM lessons WHERE isActive = 1 ORDER BY orderIndex ASC LIMIT :limit OFFSET :offset")
+    suspend fun getAllLessonsPaginated(limit: Int, offset: Int): List<LessonEntity>
+    
+    @Query("SELECT * FROM lessons WHERE gradeLevel = :grade AND isActive = 1 ORDER BY orderIndex ASC LIMIT :limit OFFSET :offset")
+    suspend fun getLessonsByGradePaginated(grade: String, limit: Int, offset: Int): List<LessonEntity>
+    
+    @Query("SELECT * FROM lessons WHERE category = :category AND isActive = 1 ORDER BY orderIndex ASC LIMIT :limit OFFSET :offset")
+    suspend fun getLessonsByCategoryPaginated(category: String, limit: Int, offset: Int): List<LessonEntity>
 }

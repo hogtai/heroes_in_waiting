@@ -48,4 +48,100 @@ data class LessonEntity(
         }
         """.trimIndent()
     }
+    
+    /**
+     * Converts to domain model with lazy loading (content loaded on demand)
+     */
+    fun toDomainModelLazy(): com.lifechurch.heroesinwaiting.data.model.Lesson {
+        return com.lifechurch.heroesinwaiting.data.model.Lesson(
+            id = id,
+            title = title,
+            description = description,
+            lessonNumber = orderIndex,
+            objectives = emptyList(), // Will be loaded on demand
+            keyTerms = emptyList(),
+            estimatedDuration = estimatedDuration,
+            targetGrades = targetGrades.map { com.lifechurch.heroesinwaiting.data.model.Grade.valueOf(it) },
+            difficultyLevel = difficultyLevel?.let { com.lifechurch.heroesinwaiting.data.model.DifficultyLevel.valueOf(it) } 
+                ?: com.lifechurch.heroesinwaiting.data.model.DifficultyLevel.BEGINNER,
+            category = com.lifechurch.heroesinwaiting.data.model.LessonCategory.valueOf(category),
+            tags = tags,
+            isActive = isActive,
+            createdAt = cachedAt.toString(),
+            updatedAt = lastUpdated.toString(),
+            content = com.lifechurch.heroesinwaiting.data.model.LessonContent(
+                introduction = com.lifechurch.heroesinwaiting.data.model.ContentSection(
+                    id = "intro",
+                    title = "Introduction",
+                    content = "Loading...", // Will be loaded on demand
+                    contentType = com.lifechurch.heroesinwaiting.data.model.ContentType.TEXT,
+                    estimatedDuration = 5
+                ),
+                mainContent = emptyList(), // Will be loaded on demand
+                conclusion = com.lifechurch.heroesinwaiting.data.model.ContentSection(
+                    id = "conclusion",
+                    title = "Conclusion",
+                    content = "Loading...", // Will be loaded on demand
+                    contentType = com.lifechurch.heroesinwaiting.data.model.ContentType.TEXT,
+                    estimatedDuration = 5
+                )
+            ),
+            activities = emptyList(), // Will be loaded on demand
+            assessments = emptyList(),
+            prerequisites = emptyList(),
+            nextLessons = emptyList(),
+            accessibilityFeatures = com.lifechurch.heroesinwaiting.data.model.AccessibilityFeatures(),
+            languageSupport = listOf("en"),
+            isDownloaded = isDownloaded,
+            isBookmarked = isBookmarked
+        )
+    }
+    
+    /**
+     * Converts to domain model with metadata only (for list views)
+     */
+    fun toDomainModelMetadata(): com.lifechurch.heroesinwaiting.data.model.Lesson {
+        return com.lifechurch.heroesinwaiting.data.model.Lesson(
+            id = id,
+            title = title,
+            description = description,
+            lessonNumber = orderIndex,
+            objectives = emptyList(),
+            keyTerms = emptyList(),
+            estimatedDuration = estimatedDuration,
+            targetGrades = targetGrades.map { com.lifechurch.heroesinwaiting.data.model.Grade.valueOf(it) },
+            difficultyLevel = difficultyLevel?.let { com.lifechurch.heroesinwaiting.data.model.DifficultyLevel.valueOf(it) } 
+                ?: com.lifechurch.heroesinwaiting.data.model.DifficultyLevel.BEGINNER,
+            category = com.lifechurch.heroesinwaiting.data.model.LessonCategory.valueOf(category),
+            tags = tags,
+            isActive = isActive,
+            createdAt = cachedAt.toString(),
+            updatedAt = lastUpdated.toString(),
+            content = com.lifechurch.heroesinwaiting.data.model.LessonContent(
+                introduction = com.lifechurch.heroesinwaiting.data.model.ContentSection(
+                    id = "intro",
+                    title = "Introduction",
+                    content = "",
+                    contentType = com.lifechurch.heroesinwaiting.data.model.ContentType.TEXT,
+                    estimatedDuration = 5
+                ),
+                mainContent = emptyList(),
+                conclusion = com.lifechurch.heroesinwaiting.data.model.ContentSection(
+                    id = "conclusion",
+                    title = "Conclusion",
+                    content = "",
+                    contentType = com.lifechurch.heroesinwaiting.data.model.ContentType.TEXT,
+                    estimatedDuration = 5
+                )
+            ),
+            activities = emptyList(),
+            assessments = emptyList(),
+            prerequisites = emptyList(),
+            nextLessons = emptyList(),
+            accessibilityFeatures = com.lifechurch.heroesinwaiting.data.model.AccessibilityFeatures(),
+            languageSupport = listOf("en"),
+            isDownloaded = isDownloaded,
+            isBookmarked = isBookmarked
+        )
+    }
 }

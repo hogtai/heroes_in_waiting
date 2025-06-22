@@ -53,11 +53,11 @@ class LessonRepository @Inject constructor(
     }
     
     /**
-     * Gets lesson by ID with offline-first approach
+     * Gets lesson by ID with lazy loading for content
      */
     fun getLessonById(id: String): Flow<Lesson?> {
         return lessonDao.getLessonByIdFlow(id).map { entity ->
-            entity?.toDomainModel()
+            entity?.toDomainModelLazy() // Use lazy loading version
         }
     }
     
@@ -515,6 +515,73 @@ class LessonRepository @Inject constructor(
     suspend fun updateLessonBookmark(lessonId: String, isBookmarked: Boolean) {
         // This would update bookmark status in database
         // Implementation depends on bookmark table structure
+    }
+    
+    /**
+     * Gets lesson content on demand (lazy loading)
+     */
+    suspend fun getLessonContent(lessonId: String): LessonContent? {
+        return try {
+            // Try to get from offline storage first
+            val offlineContent = getOfflineLessonContent(lessonId)
+            if (offlineContent != null) {
+                // Parse content from offline storage
+                parseLessonContentFromOffline(offlineContent)
+            } else {
+                // Get from database
+                val lesson = lessonDao.getLessonById(lessonId)
+                lesson?.let { parseLessonContentFromEntity(it) }
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    /**
+     * Gets lesson metadata without full content (for list views)
+     */
+    fun getLessonMetadata(id: String): Flow<Lesson?> {
+        return lessonDao.getLessonByIdFlow(id).map { entity ->
+            entity?.toDomainModelMetadata() // Use metadata-only version
+        }
+    }
+    
+    /**
+     * Preloads lesson content for better performance
+     */
+    suspend fun preloadLessonContent(lessonIds: List<String>) {
+        lessonIds.forEach { lessonId ->
+            try {
+                // Preload content in background
+                getLessonContent(lessonId)
+            } catch (e: Exception) {
+                // Ignore preload failures
+            }
+        }
+    }
+    
+    /**
+     * Gets lessons with pagination for large datasets
+     */
+    fun getLessonsPaginated(
+        page: Int,
+        pageSize: Int,
+        grade: Grade? = null,
+        category: LessonCategory? = null
+    ): Flow<List<Lesson>> {
+        return flow {
+            val offset = page * pageSize
+            
+            val lessons = if (grade != null) {
+                lessonDao.getLessonsByGradePaginated(grade.name, pageSize, offset)
+            } else if (category != null) {
+                lessonDao.getLessonsByCategoryPaginated(category.name, pageSize, offset)
+            } else {
+                lessonDao.getAllLessonsPaginated(pageSize, offset)
+            }
+            
+            emit(lessons.map { it.toDomainModelMetadata() })
+        }
     }
     
     // Private helper methods
