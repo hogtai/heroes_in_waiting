@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.lifechurch.heroesinwaiting.data.model.Lesson
 import com.lifechurch.heroesinwaiting.data.model.LessonCategory
 import com.lifechurch.heroesinwaiting.data.model.GradeLevel
+import com.lifechurch.heroesinwaiting.data.repository.DownloadProgress
 
 /**
  * Lesson Card component for displaying lesson information in grid layouts
@@ -411,5 +412,144 @@ private fun getCategoryIcon(category: LessonCategory): ImageVector {
         LessonCategory.COMMUNITY -> Icons.Default.Group
         LessonCategory.REFLECTION -> Icons.Default.Psychology
         LessonCategory.ASSESSMENT -> Icons.Default.Assessment
+    }
+}
+
+/**
+ * Download progress indicator for lesson downloads
+ */
+@Composable
+fun LessonDownloadProgressIndicator(
+    downloadProgress: DownloadProgress?,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                when (downloadProgress) {
+                    is DownloadProgress.Starting -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Preparing download...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    is DownloadProgress.Downloading -> {
+                        CircularProgressIndicator(
+                            progress = downloadProgress.progress / 100f,
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Downloading... ${downloadProgress.progress}%",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    is DownloadProgress.Completed -> {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Download completed",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    is DownloadProgress.Failed -> {
+                        Icon(
+                            Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Download failed: ${downloadProgress.error}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    null -> {
+                        // No download in progress
+                    }
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                // Cancel button (only show during download)
+                if (downloadProgress is DownloadProgress.Downloading || downloadProgress is DownloadProgress.Starting) {
+                    TextButton(
+                        onClick = onCancel,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+            
+            // Progress bar for downloading state
+            if (downloadProgress is DownloadProgress.Downloading) {
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = downloadProgress.progress / 100f,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Offline lesson indicator
+ */
+@Composable
+fun OfflineLessonIndicator(
+    isAvailableOffline: Boolean,
+    modifier: Modifier = Modifier
+) {
+    if (isAvailableOffline) {
+        Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.OfflineStorage,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "Available offline",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 } 

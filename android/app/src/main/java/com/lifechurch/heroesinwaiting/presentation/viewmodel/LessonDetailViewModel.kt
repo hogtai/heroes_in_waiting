@@ -222,20 +222,36 @@ class LessonDetailViewModel @Inject constructor(
     }
     
     /**
-     * Enhanced download functionality with error handling
+     * Enhanced download functionality with error handling and progress tracking
      */
     fun downloadLesson() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isDownloading = true)
             
             try {
-                lessonRepository.markLessonAsDownloaded(lessonId)
-                _uiState.value = _uiState.value.copy(
-                    isDownloading = false,
-                    lesson = _uiState.value.lesson?.copy(isDownloaded = true),
-                    error = null
+                // Use enhanced download functionality
+                lessonRepository.downloadLessonForOffline(lessonId).fold(
+                    onSuccess = {
+                        _uiState.value = _uiState.value.copy(
+                            isDownloading = false,
+                            lesson = _uiState.value.lesson?.copy(isDownloaded = true),
+                            error = null
+                        )
+                        _events.emit(LessonDetailEvent.LessonDownloaded)
+                    },
+                    onFailure = { exception ->
+                        val errorMessage = when (exception) {
+                            is UnknownHostException -> "Cannot download while offline. Please check your connection."
+                            is SocketTimeoutException -> "Download timed out. Please try again."
+                            else -> "Failed to download lesson: ${exception.message}"
+                        }
+                        
+                        _uiState.value = _uiState.value.copy(
+                            isDownloading = false,
+                            error = errorMessage
+                        )
+                    }
                 )
-                _events.emit(LessonDetailEvent.LessonDownloaded)
             } catch (e: Exception) {
                 val errorMessage = when (e) {
                     is UnknownHostException -> "Cannot download while offline. Please check your connection."
@@ -249,6 +265,20 @@ class LessonDetailViewModel @Inject constructor(
                 )
             }
         }
+    }
+    
+    /**
+     * Gets download progress for this lesson
+     */
+    fun getDownloadProgress(): DownloadProgress? {
+        return lessonRepository.getDownloadProgress(lessonId)
+    }
+    
+    /**
+     * Checks if lesson is available offline
+     */
+    suspend fun isLessonAvailableOffline(): Boolean {
+        return lessonRepository.isLessonAvailableOffline(lessonId)
     }
     
     /**

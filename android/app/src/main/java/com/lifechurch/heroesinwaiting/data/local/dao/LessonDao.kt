@@ -22,6 +22,24 @@ interface LessonDao {
     @Query("SELECT * FROM lessons WHERE isActive = 1 AND mainContent IS NOT NULL ORDER BY orderIndex ASC")
     fun getLessonsWithContent(): Flow<List<LessonEntity>>
     
+    @Query("SELECT * FROM lessons WHERE isDownloaded = 1 AND isActive = 1 ORDER BY orderIndex ASC")
+    fun getDownloadedLessonsFlow(): Flow<List<LessonEntity>>
+    
+    @Query("SELECT * FROM lessons WHERE gradeLevel = :grade AND isActive = 1 ORDER BY orderIndex ASC")
+    fun getLessonsByGrade(grade: String): List<LessonEntity>
+    
+    @Query("SELECT * FROM lessons WHERE gradeLevel = :grade AND isActive = 1 ORDER BY orderIndex ASC")
+    fun getLessonsByGradeFlow(grade: String): Flow<List<LessonEntity>>
+    
+    @Query("SELECT * FROM lessons WHERE title LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%' AND isActive = 1 ORDER BY orderIndex ASC")
+    fun searchLessonsFlow(query: String): Flow<List<LessonEntity>>
+    
+    @Query("SELECT COUNT(*) FROM lessons WHERE isActive = 1")
+    suspend fun getTotalLessonsCount(): Int
+    
+    @Query("SELECT COUNT(*) FROM lessons WHERE isDownloaded = 1 AND isActive = 1")
+    suspend fun getDownloadedLessonsCount(): Int
+    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLesson(lesson: LessonEntity)
     
@@ -48,4 +66,10 @@ interface LessonDao {
     
     @Query("UPDATE lessons SET lastUpdated = :timestamp WHERE id = :lessonId")
     suspend fun updateLastUpdated(lessonId: String, timestamp: Long = System.currentTimeMillis())
+    
+    @Query("UPDATE lessons SET isDownloaded = :isDownloaded WHERE id = :lessonId")
+    suspend fun updateDownloadStatus(lessonId: String, isDownloaded: Boolean)
+    
+    @Query("UPDATE lessons SET isDownloaded = 0")
+    suspend fun clearAllDownloadFlags()
 }

@@ -21,5 +21,31 @@ data class LessonEntity(
     val mainContent: String? = null,
     val keyPoints: List<String> = emptyList(),
     val cachedAt: Long = System.currentTimeMillis(),
-    val lastUpdated: Long = System.currentTimeMillis()
-)
+    val lastUpdated: Long = System.currentTimeMillis(),
+    val isDownloaded: Boolean = false,
+    val gradeLevel: String? = null,
+    val difficultyLevel: String? = null,
+    val targetGrades: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
+    val isBookmarked: Boolean = false
+) {
+    fun toJson(): String {
+        // Simple JSON serialization for metadata storage
+        return """
+        {
+            "id": "$id",
+            "title": "$title",
+            "description": "$description",
+            "orderIndex": $orderIndex,
+            "estimatedDuration": $estimatedDuration,
+            "category": "$category",
+            "isActive": $isActive,
+            "isDownloaded": $isDownloaded,
+            "gradeLevel": "${gradeLevel ?: ""}",
+            "difficultyLevel": "${difficultyLevel ?: ""}",
+            "cachedAt": $cachedAt,
+            "lastUpdated": $lastUpdated
+        }
+        """.trimIndent()
+    }
+}
