@@ -25,14 +25,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.lifechurch.heroesinwaiting.data.model.UserType
 import com.lifechurch.heroesinwaiting.presentation.navigation.Screen
 import com.lifechurch.heroesinwaiting.presentation.screens.auth.AuthScreen
 import com.lifechurch.heroesinwaiting.presentation.screens.facilitator.FacilitatorDashboardScreen
 import com.lifechurch.heroesinwaiting.presentation.screens.facilitator.CreateClassroomScreen
+import com.lifechurch.heroesinwaiting.presentation.screens.facilitator.LessonSelectionScreen
+import com.lifechurch.heroesinwaiting.presentation.screens.facilitator.LessonDetailScreen
 import com.lifechurch.heroesinwaiting.presentation.screens.student.StudentDashboardScreen
 import com.lifechurch.heroesinwaiting.presentation.theme.HeroesInWaitingTheme
 import com.lifechurch.heroesinwaiting.presentation.viewmodel.AuthViewModel
@@ -121,7 +125,7 @@ fun HeroesInWaitingApp() {
                         navController.navigate(Screen.CreateClassroom.route)
                     },
                     onNavigateToLessons = {
-                        navController.navigate(Screen.LessonManagement.route)
+                        navController.navigate(Screen.LessonSelection.route)
                     },
                     onNavigateToAnalytics = {
                         navController.navigate(Screen.Analytics.route)
@@ -154,10 +158,28 @@ fun HeroesInWaitingApp() {
                 )
             }
             
-            composable(Screen.LessonManagement.route) {
-                PlaceholderScreen(
-                    title = "Lesson Management",
-                    message = "Lesson management screen will be implemented in the next phase.",
+            // Lesson Selection screen - fully implemented
+            composable(Screen.LessonSelection.route) {
+                LessonSelectionScreen(
+                    onLessonSelected = { lessonId ->
+                        navController.navigate(Screen.LessonDetails.createRoute(lessonId))
+                    },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            
+            // Lesson Details screen - fully implemented
+            composable(
+                route = Screen.LessonDetails.route,
+                arguments = listOf(navArgument("lessonId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val lessonId = backStackEntry.arguments?.getString("lessonId") ?: ""
+                LessonDetailScreen(
+                    lessonId = lessonId,
+                    onStartLesson = { lessonId, classroomId ->
+                        // TODO: Navigate to lesson facilitation screen
+                        navController.popBackStack()
+                    },
                     onBack = { navController.popBackStack() }
                 )
             }
