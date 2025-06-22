@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Production API domain - enforce HTTPS and certificate validation -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.heroesinwaiting.org</domain>
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+        <!-- Certificate pinning for production -->
+        <pin-set expiration="2025-12-31">
+            <!-- Add your actual certificate pins here -->
+            <!-- Example: <pin digest="SHA-256">k2v657xBsOVe1PQRwHhdiS2AJCC2+gHpUuR07y9X0Qw=</pin> -->
+        </pin-set>
+    </domain-config>
+    
+    <!-- Development environment - allow HTTP for localhost -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+    </domain-config>
+    
+    <!-- Default configuration - deny cleartext traffic -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config> 

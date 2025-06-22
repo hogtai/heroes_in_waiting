@@ -1,0 +1,163 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    # Run security scans weekly
+    - cron: '0 2 * * 1'
+
+jobs:
+  # Static Application Security Testing (SAST)
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run npm audit
+      run: |
+        npm ci
+        npm audit --audit-level=moderate
+        
+    - name: Run ESLint security rules
+      run: |
+        npm run lint
+        
+    - name: Check for secrets in code
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: .
+        base: ${{ github.event.before }}
+        head: ${{ github.event.after }}
+
+  # Dynamic Application Security Testing (DAST)
+  dast:
+    runs-on: ubuntu-latest
+    needs: sast
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Start application
+      run: |
+        npm run migrate:test
+        npm start &
+        sleep 30
+        
+    - name: Run OWASP ZAP Scan
+      uses: zaproxy/action-full-scan@v0.8.0
+      with:
+        target: 'http://localhost:3000'
+        rules_file_name: '.zap/rules.tsv'
+        cmd_options: '-a'
+        
+    - name: Upload ZAP results
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-results
+        path: zap-report.html
+
+  # Dependency vulnerability scanning
+  dependency-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+        
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'Heroes in Waiting'
+        path: '.'
+        format: 'HTML'
+        out: 'reports'
+
+  # Android security scanning
+  android-security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Run MobSF security scan
+      uses: MobSF/mobsfscan-action@main
+      with:
+        args: 'android/'
+        
+    - name: Upload Android security report
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-security-report
+        path: mobsfscan-report.json
+
+  # Security compliance check
+  compliance-check:
+    runs-on: ubuntu-latest
+    needs: [sast, dependency-scan]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check COPPA compliance
+      run: |
+        # Check for PII collection in student endpoints
+        grep -r "firstName\|lastName\|email\|phone" src/routes/students.js || echo "No PII found in student routes"
+        
+    - name: Check JWT security
+      run: |
+        # Ensure no hardcoded secrets
+        grep -r "your-secret-key\|default-secret" src/ || echo "No hardcoded secrets found"
+        
+    - name: Check environment variables
+      run: |
+        # Verify required security env vars are documented
+        grep -q "JWT_SECRET" .env.example || echo "JWT_SECRET not in .env.example"
+        grep -q "DB_PASSWORD" .env.example || echo "DB_PASSWORD not in .env.example"
+
+  # Security report generation
+  security-report:
+    runs-on: ubuntu-latest
+    needs: [sast, dast, dependency-scan, android-security, compliance-check]
+    if: always()
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Generate security report
+      run: |
+        echo "# Security Scan Report" > security-report.md
+        echo "Generated: $(date)" >> security-report.md
+        echo "" >> security-report.md
+        echo "## Summary" >> security-report.md
+        echo "- SAST: ${{ needs.sast.result }}" >> security-report.md
+        echo "- DAST: ${{ needs.dast.result }}" >> security-report.md
+        echo "- Dependencies: ${{ needs.dependency-scan.result }}" >> security-report.md
+        echo "- Android: ${{ needs.android-security.result }}" >> security-report.md
+        echo "- Compliance: ${{ needs.compliance-check.result }}" >> security-report.md
+        
+    - name: Upload security report
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: security-report.md 

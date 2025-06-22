@@ -17,13 +17,30 @@ const {
   validatePagination
 } = require('../middleware/validation');
 
+// COPPA compliance middleware
+const { 
+  validateNoPII, 
+  validateStudentDemographics, 
+  logStudentDataAccess 
+} = require('../middleware/coppaCompliance');
+
 const { body } = require('express-validator');
 
-// Public route for student enrollment
-router.post('/enroll', validateStudentEnrollment, validateRequest, enrollStudent);
+// Public route for student enrollment - with COPPA compliance
+router.post('/enroll', 
+  validateNoPII,
+  validateStudentDemographics,
+  validateStudentEnrollment, 
+  validateRequest, 
+  enrollStudent
+);
 
-// Student-only routes
-router.get('/profile', authenticateStudent, getStudentProfile);
+// Student-only routes - with COPPA compliance
+router.get('/profile', 
+  authenticateStudent, 
+  logStudentDataAccess,
+  getStudentProfile
+);
 
 // Facilitator-only routes
 router.get('/classroom/:classroomId',

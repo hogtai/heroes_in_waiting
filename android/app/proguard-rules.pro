@@ -20,49 +20,74 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# Retrofit
--dontwarn retrofit2.**
--keep class retrofit2.** { *; }
+# Security: Obfuscate all classes except those that need to be public
+-keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable
 -keepattributes Signature
 -keepattributes Exceptions
 
-# OkHttp
+# Keep Compose-related classes
+-keep class androidx.compose.** { *; }
+-keepclassmembers class androidx.compose.** { *; }
+
+# Keep Hilt-generated classes
+-keep class dagger.hilt.** { *; }
+-keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager { *; }
+
+# Keep Room database classes
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**
+
+# Keep Retrofit/OkHttp classes
+-keepattributes Signature
+-keepattributes Exceptions
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
+-keepclasseswithmembers class * {
+    @retrofit2.http.* <methods>;
+}
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn javax.annotation.**
+-dontwarn org.conscrypt.**
 
-# Gson
--keepattributes Signature
--keepattributes *Annotation*
--dontwarn sun.misc.**
--keep class com.google.gson.** { *; }
--keep class * implements com.google.gson.TypeAdapterFactory
--keep class * implements com.google.gson.JsonSerializer
--keep class * implements com.google.gson.JsonDeserializer
-
-# Keep data classes for JSON serialization
+# Keep JWT and authentication classes
+-keep class com.lifechurch.heroesinwaiting.data.remote.dto.** { *; }
 -keep class com.lifechurch.heroesinwaiting.data.model.** { *; }
--keep class com.lifechurch.heroesinwaiting.data.network.dto.** { *; }
 
-# Room
--keep class * extends androidx.room.RoomDatabase
--dontwarn androidx.room.paging.**
+# Keep DataStore preferences
+-keep class androidx.datastore.** { *; }
 
-# Hilt
--keep class dagger.hilt.** { *; }
--keep class javax.inject.** { *; }
--keep class * extends dagger.hilt.android.HiltAndroidApp
+# Obfuscate sensitive package names
+-repackageclasses 'o'
+-allowaccessmodification
 
-# Keep Composable functions
--keep class androidx.compose.** { *; }
--keep @androidx.compose.runtime.Composable class * { *; }
+# Remove logging in release builds
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
 
-# Keep Android components
+# Keep only essential Android classes
 -keep public class * extends android.app.Activity
 -keep public class * extends android.app.Application
 -keep public class * extends android.app.Service
 -keep public class * extends android.content.BroadcastReceiver
 -keep public class * extends android.content.ContentProvider
+-keep public class * extends android.preference.Preference
+-keep public class * extends android.view.View
+-keep public class * extends android.app.Fragment
 
-# Security
--keep class androidx.security.crypto.** { *; }
+# Remove debug information
+-renamesourcefileattribute SourceFile
+
+# Optimize
+-optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+-optimizationpasses 5
+-allowaccessmodification
+
+# Additional security measures
+-dontskipnonpubliclibraryclasses
+-dontskipnonpubliclibraryclassmembers
