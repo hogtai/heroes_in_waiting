@@ -11,6 +11,8 @@ import kotlinx.coroutines.delay
 import java.net.UnknownHostException
 import java.net.SocketTimeoutException
 import javax.inject.Inject
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 
 /**
  * ViewModel for Lesson Selection Screen
@@ -138,8 +140,51 @@ class LessonSelectionViewModel @Inject constructor(
             initialValue = 0
         )
     
+    // Performance monitoring
+    private val _performanceMetrics = MutableStateFlow<PerformanceMetrics>(PerformanceMetrics())
+    val performanceMetrics: StateFlow<PerformanceMetrics> = _performanceMetrics.asStateFlow()
+    
+    // Memory management
+    private val _memoryUsage = MutableStateFlow<Long>(0)
+    val memoryUsage: StateFlow<Long> = _memoryUsage.asStateFlow()
+    
     init {
         loadLessons()
+        startPerformanceMonitoring()
+    }
+    
+    /**
+     * Starts performance monitoring
+     */
+    private fun startPerformanceMonitoring() {
+        viewModelScope.launch {
+            while (true) {
+                updateMemoryUsage()
+                delay(5000) // Update every 5 seconds
+            }
+        }
+    }
+    
+    /**
+     * Updates memory usage tracking
+     */
+    private fun updateMemoryUsage() {
+        val runtime = Runtime.getRuntime()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        _memoryUsage.value = usedMemory / 1024 / 1024 // Convert to MB
+    }
+    
+    /**
+     * Records performance metric
+     */
+    private fun recordPerformanceMetric(operation: String, duration: Long) {
+        _performanceMetrics.value = _performanceMetrics.value.copy(
+            operations = _performanceMetrics.value.operations + PerformanceOperation(
+                operation = operation,
+                duration = duration,
+                timestamp = System.currentTimeMillis()
+            )
+        )
     }
     
     /**
@@ -209,7 +254,7 @@ class LessonSelectionViewModel @Inject constructor(
     }
     
     /**
-     * Enhanced lesson loading with comprehensive error handling
+     * Enhanced lesson loading with comprehensive error handling and edge cases
      */
     private fun loadLessons() {
         viewModelScope.launch {
@@ -217,22 +262,70 @@ class LessonSelectionViewModel @Inject constructor(
             _isRetrying.value = false
             
             try {
-                // Attempt to sync lessons from server
-                lessonRepository.syncLessons().fold(
-                    onSuccess = {
-                        _uiState.value = _uiState.value.copy(isLoading = false)
-                        _isOffline.value = false
-                        _lastSyncTime.value = System.currentTimeMillis()
-                        _retryCount.value = 0
-                    },
-                    onFailure = { exception ->
-                        handleSyncError(exception)
-                    }
-                )
+                // Validate current state before loading
+                if (!validateAppState()) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "App state invalid. Please restart the app."
+                    )
+                    return@launch
+                }
+                
+                // Attempt to sync lessons from server with timeout
+                withTimeout(30000) { // 30 second timeout
+                    lessonRepository.syncLessons().fold(
+                        onSuccess = {
+                            _uiState.value = _uiState.value.copy(isLoading = false)
+                            _isOffline.value = false
+                            _lastSyncTime.value = System.currentTimeMillis()
+                            _retryCount.value = 0
+                        },
+                        onFailure = { exception ->
+                            handleSyncError(exception)
+                        }
+                    )
+                }
+            } catch (e: TimeoutCancellationException) {
+                handleSyncError(Exception("Request timed out. Please check your connection."))
             } catch (e: Exception) {
                 handleSyncError(e)
             }
         }
+    }
+    
+    /**
+     * Validates app state before operations
+     */
+    private fun validateAppState(): Boolean {
+        return try {
+            // Check if repository is accessible
+            lessonRepository.getAllLessons()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    /**
+     * Validates search query input
+     */
+    private fun validateSearchQuery(query: String): Boolean {
+        return query.length <= 100 && !query.contains("<script>") // Basic XSS prevention
+    }
+    
+    /**
+     * Enhanced search query update with validation
+     */
+    fun updateSearchQuery(query: String) {
+        if (!validateSearchQuery(query)) {
+            _uiState.value = _uiState.value.copy(
+                error = "Search query is too long or contains invalid characters."
+            )
+            return
+        }
+        
+        _searchQuery.value = query
+        resetPagination()
     }
     
     /**
@@ -336,14 +429,6 @@ class LessonSelectionViewModel @Inject constructor(
             resetPagination()
             loadLessons()
         }
-    }
-    
-    /**
-     * Updates search query with debouncing
-     */
-    fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
-        resetPagination() // Reset pagination when search changes
     }
     
     /**
@@ -515,3 +600,22 @@ sealed class LessonSelectionEvent {
     object SyncCompleted : LessonSelectionEvent()
     object LoadMoreLessons : LessonSelectionEvent()
 }
+
+/**
+ * Performance metrics for monitoring
+ */
+data class PerformanceMetrics(
+    val operations: List<PerformanceOperation> = emptyList(),
+    val averageSearchTime: Long = 0,
+    val averageFilterTime: Long = 0,
+    val memoryUsageMB: Long = 0
+)
+
+/**
+ * Individual performance operation
+ */
+data class PerformanceOperation(
+    val operation: String,
+    val duration: Long,
+    val timestamp: Long
+)

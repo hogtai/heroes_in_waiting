@@ -644,12 +644,17 @@ fun HeroesLargeButton(
 fun HeroesErrorDisplay(
     message: String,
     modifier: Modifier = Modifier,
-    onRetry: (() -> Unit)? = null
+    onRetry: (() -> Unit)? = null,
+    isOffline: Boolean = false
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
+            containerColor = if (isOffline) {
+                MaterialTheme.colorScheme.tertiaryContainer
+            } else {
+                MaterialTheme.colorScheme.errorContainer
+            }
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -659,24 +664,56 @@ fun HeroesErrorDisplay(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Default.ErrorOutline,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(24.dp)
+                imageVector = if (isOffline) {
+                    Icons.Default.OfflineStorage
+                } else {
+                    Icons.Default.ErrorOutline
+                },
+                contentDescription = if (isOffline) "Offline mode" else "Error occurred",
+                tint = if (isOffline) {
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+                modifier = Modifier.size(32.dp)
             )
             
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                textAlign = TextAlign.Center
+                color = if (isOffline) {
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onErrorContainer
+                },
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics {
+                    contentDescription = "Error message: $message"
+                }
             )
             
             if (onRetry != null) {
-                TextButton(onClick = onRetry) {
+                TextButton(
+                    onClick = onRetry,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = if (isOffline) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        }
+                    ),
+                    modifier = Modifier.semantics {
+                        contentDescription = "Retry action"
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Try Again",
-                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )
                 }

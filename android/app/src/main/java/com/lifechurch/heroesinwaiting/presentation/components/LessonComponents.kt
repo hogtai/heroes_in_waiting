@@ -19,6 +19,7 @@ import com.lifechurch.heroesinwaiting.data.repository.DownloadProgress
 
 /**
  * Lesson Card component for displaying lesson information in grid layouts
+ * Enhanced with accessibility, visual feedback, and dark mode support
  */
 @Composable
 fun LessonCard(
@@ -39,6 +40,16 @@ fun LessonCard(
             }
         ),
         modifier = modifier
+            .semantics {
+                contentDescription = "Lesson ${lesson.lessonNumber}: ${lesson.title}"
+                role = Role.Button
+                stateDescription = when {
+                    !isAvailable -> "Not available"
+                    progressPercent > 0 -> "In progress"
+                    lesson.isDownloaded -> "Downloaded"
+                    else -> "Available"
+                }
+            }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Lesson number and category badge
@@ -47,13 +58,23 @@ fun LessonCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Badge {
-                    Text("Lesson ${lesson.lessonNumber}")
+                Badge(
+                    colors = BadgeDefaults.badgeColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Text(
+                        text = "Lesson ${lesson.lessonNumber}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 Icon(
                     imageVector = getCategoryIcon(lesson.category),
-                    contentDescription = lesson.category.displayName,
-                    tint = MaterialTheme.colorScheme.primary
+                    contentDescription = "Category: ${lesson.category.displayName}",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
             
@@ -65,7 +86,8 @@ fun LessonCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
             )
             
             HeroesVerticalSpacer(8.dp)
@@ -80,35 +102,55 @@ fun LessonCard(
             
             HeroesVerticalSpacer(12.dp)
             
-            // Duration and grade info
+            // Progress indicator (if applicable)
+            if (progressPercent > 0) {
+                LinearProgressIndicator(
+                    progress = progressPercent,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                HeroesVerticalSpacer(8.dp)
+            }
+            
+            // Lesson metadata
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Duration
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${lesson.estimatedDuration}m",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                // Grade levels
                 Text(
-                    text = "${lesson.totalEstimatedTime} mins",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = "Grades ${lesson.targetGrades.joinToString { it.displayName }}",
-                    style = MaterialTheme.typography.bodySmall
+                    text = lesson.targetGrades.joinToString(", ") { it.displayName },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            // Progress indicator
-            if (progressPercent > 0) {
-                HeroesVerticalSpacer(12.dp)
-                LinearProgressIndicator(
-                    progress = progressPercent / 100f,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary
-                )
-                HeroesVerticalSpacer(4.dp)
-                Text(
-                    text = "${progressPercent.toInt()}% Complete",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            // Offline indicator
+            if (lesson.isDownloaded) {
+                HeroesVerticalSpacer(8.dp)
+                OfflineLessonIndicator(
+                    isAvailableOffline = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }

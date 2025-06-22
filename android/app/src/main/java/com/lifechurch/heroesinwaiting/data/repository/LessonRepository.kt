@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.net.URL
+import java.util.logging.Logger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,6 +29,9 @@ class LessonRepository @Inject constructor(
     private val studentApiService: StudentApiService,
     private val lessonDao: LessonDao
 ) {
+    
+    // Logger for network operations
+    private val logger = Logger.getLogger(LessonRepository::class.java.name)
     
     // Download progress tracking
     private val _downloadProgress = MutableStateFlow<Map<String, DownloadProgress>>(emptyMap())
@@ -479,16 +483,32 @@ class LessonRepository @Inject constructor(
      * Synchronizes lessons from API to local database
      */
     suspend fun syncLessons(): Result<Unit> {
+        val startTime = System.currentTimeMillis()
+        logger.info("Starting lesson sync from API")
+        
         return try {
             val response = apiService.getLessons()
+            val responseTime = System.currentTimeMillis() - startTime
+            
+            logger.info("Lesson sync API response received in ${responseTime}ms")
+            
             if (response.isSuccessful && response.body() != null) {
                 val lessons = response.body()!!.lessons
+                logger.info("Syncing ${lessons.size} lessons to local database")
+                
                 cacheLessonsFromApi(lessons)
+                
+                val totalTime = System.currentTimeMillis() - startTime
+                logger.info("Lesson sync completed successfully in ${totalTime}ms")
+                
                 Result.success(Unit)
             } else {
+                logger.warning("Lesson sync failed: ${response.message()}")
                 Result.failure(Exception("Failed to sync lessons: ${response.message()}"))
             }
         } catch (e: Exception) {
+            val totalTime = System.currentTimeMillis() - startTime
+            logger.severe("Lesson sync failed after ${totalTime}ms: ${e.message}")
             Result.failure(e)
         }
     }
@@ -586,9 +606,47 @@ class LessonRepository @Inject constructor(
     
     // Private helper methods
     
+    /**
+     * Validates lesson data integrity
+     */
+    private fun validateLessonData(lesson: Lesson): Boolean {
+        return lesson.id.isNotBlank() &&
+               lesson.title.isNotBlank() &&
+               lesson.description.isNotBlank() &&
+               lesson.lessonNumber > 0 &&
+               lesson.estimatedDuration > 0 &&
+               lesson.targetGrades.isNotEmpty()
+    }
+    
+    /**
+     * Sanitizes lesson content for security
+     */
+    private fun sanitizeLessonContent(content: String): String {
+        return content
+            .replace("<script>", "") // Remove script tags
+            .replace("javascript:", "") // Remove javascript protocol
+            .trim()
+    }
+    
+    /**
+     * Enhanced lesson caching with validation
+     */
     private suspend fun cacheLessonsFromApi(lessons: List<Lesson>) {
-        val entities = lessons.map { LessonEntity.fromDomainModel(it) }
+        val validLessons = lessons.filter { validateLessonData(it) }
+        
+        if (validLessons.size != lessons.size) {
+            logger.warning("Filtered out ${lessons.size - validLessons.size} invalid lessons")
+        }
+        
+        val entities = validLessons.map { lesson ->
+            LessonEntity.fromDomainModel(lesson.copy(
+                title = sanitizeLessonContent(lesson.title),
+                description = sanitizeLessonContent(lesson.description)
+            ))
+        }
+        
         lessonDao.insertLessons(entities)
+        logger.info("Cached ${entities.size} valid lessons")
     }
     
     private suspend fun cacheLessonFromApi(lesson: Lesson) {

@@ -183,7 +183,8 @@ fun LessonSelectionScreen(
                         ) {
                             EmptyLessonsState(
                                 hasActiveFilters = viewModel.hasActiveFilters(),
-                                onClearFilters = viewModel::clearAllFilters
+                                onClearFilters = viewModel::clearAllFilters,
+                                isOffline = isOffline
                             )
                         }
                     }
@@ -659,7 +660,8 @@ private fun LessonCard(
 @Composable
 private fun EmptyLessonsState(
     hasActiveFilters: Boolean,
-    onClearFilters: () -> Unit
+    onClearFilters: () -> Unit,
+    isOffline: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -669,14 +671,22 @@ private fun EmptyLessonsState(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "📚",
+            text = when {
+                isOffline -> "📱"
+                hasActiveFilters -> "🔍"
+                else -> "📚"
+            },
             fontSize = 64.sp
         )
         
         HeroesVerticalSpacer(16.dp)
         
         Text(
-            text = if (hasActiveFilters) "No lessons match your filters" else "No lessons available",
+            text = when {
+                isOffline -> "Offline Mode"
+                hasActiveFilters -> "No lessons match your filters"
+                else -> "No lessons available"
+            },
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -686,10 +696,10 @@ private fun EmptyLessonsState(
         HeroesVerticalSpacer(8.dp)
         
         Text(
-            text = if (hasActiveFilters) {
-                "Try adjusting your search terms or filters to find more lessons."
-            } else {
-                "Lessons will appear here when they become available."
+            text = when {
+                isOffline -> "You're currently offline. Downloaded lessons are available."
+                hasActiveFilters -> "Try adjusting your search terms or filters to find more lessons."
+                else -> "Lessons will appear here when they become available."
             },
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
@@ -701,7 +711,21 @@ private fun EmptyLessonsState(
             
             HeroesSecondaryButton(
                 text = "Clear All Filters",
-                onClick = onClearFilters
+                onClick = onClearFilters,
+                modifier = Modifier.semantics {
+                    contentDescription = "Clear all active filters"
+                }
+            )
+        }
+        
+        if (isOffline) {
+            HeroesVerticalSpacer(16.dp)
+            
+            Text(
+                text = "Last sync: ${getLastSyncTimeFormatted()}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
         }
     }
