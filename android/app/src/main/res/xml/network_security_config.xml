@@ -8,8 +8,8 @@
         </trust-anchors>
         <!-- Certificate pinning for production -->
         <pin-set expiration="2025-12-31">
-            <!-- Add your actual certificate pins here -->
-            <!-- Example: <pin digest="SHA-256">k2v657xBsOVe1PQRwHhdiS2AJCC2+gHpUuR07y9X0Qw=</pin> -->
+            <pin digest="SHA-256">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</pin>
+            <pin digest="SHA-256">BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=</pin>
         </pin-set>
     </domain-config>
     

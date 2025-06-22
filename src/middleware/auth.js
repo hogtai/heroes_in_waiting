@@ -1,6 +1,33 @@
-const { verifyToken } = require('../utils/auth');
+const jwt = require('jsonwebtoken');
+const jwtConfig = require('../config/auth');
 const db = require('../config/database');
 const logger = require('../utils/logger');
+
+/**
+ * Enhanced JWT token validation
+ */
+function validateToken(token) {
+    try {
+        const decoded = jwt.verify(token, jwtConfig.secret, {
+            issuer: jwtConfig.issuer,
+            audience: jwtConfig.audience,
+            algorithms: [jwtConfig.algorithm],
+            clockTolerance: jwtConfig.clockTolerance
+        });
+        return decoded;
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            throw new Error('Token expired');
+        }
+        if (error.name === 'JsonWebTokenError') {
+            throw new Error('Invalid token');
+        }
+        if (error.name === 'NotBeforeError') {
+            throw new Error('Token not yet valid');
+        }
+        throw new Error('Token validation failed');
+    }
+}
 
 /**
  * Middleware to authenticate facilitators using JWT
@@ -16,7 +43,7 @@ async function authenticateFacilitator(req, res, next) {
       });
     }
 
-    const token = authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader.replace('Bearer ', '');
     
     if (!token) {
       return res.status(401).json({
@@ -26,7 +53,7 @@ async function authenticateFacilitator(req, res, next) {
     }
 
     try {
-      const decoded = verifyToken(token);
+      const decoded = validateToken(token);
       
       // Verify facilitator exists and is active
       const facilitator = await db('facilitators')
@@ -55,7 +82,7 @@ async function authenticateFacilitator(req, res, next) {
       logger.error('JWT verification failed:', jwtError);
       return res.status(401).json({
         success: false,
-        error: 'Invalid token'
+        error: jwtError.message || 'Invalid token'
       });
     }
   } catch (error) {

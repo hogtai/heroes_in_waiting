@@ -16,7 +16,6 @@ if (process.env.JWT_SECRET.length < 32) {
 }
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
@@ -24,6 +23,7 @@ const rateLimit = require('express-rate-limit');
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 const { validateRequest } = require('./middleware/validation');
+const securityMiddleware = require('./middleware/security');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -45,18 +45,8 @@ const db = require('./config/database');
 // Initialize Express app
 const app = express();
 
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    useDefaults: true,
-    directives: {
-      'default-src': ["'self'"],
-      'img-src': ["'self'", 'data:', 'https:'],
-      'script-src': ["'self'", "'unsafe-inline'"],
-      'style-src': ["'self'", "'unsafe-inline'"]
-    }
-  }
-}));
+// Enhanced security middleware
+app.use(securityMiddleware);
 
 // CORS configuration
 const corsOptions = {

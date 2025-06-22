@@ -4,6 +4,7 @@ import com.lifechurch.heroesinwaiting.BuildConfig
 import com.lifechurch.heroesinwaiting.data.api.ApiService
 import com.lifechurch.heroesinwaiting.data.api.StudentApiService
 import com.lifechurch.heroesinwaiting.data.remote.AuthInterceptor
+import com.lifechurch.heroesinwaiting.network.CertificatePinner
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -46,13 +47,19 @@ object NetworkModule {
         loggingInterceptor: HttpLoggingInterceptor,
         authInterceptor: AuthInterceptor
     ): OkHttpClient {
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor(authInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .build()
+        
+        // Enable certificate pinning in production builds
+        if (!BuildConfig.DEBUG) {
+            builder.certificatePinner(CertificatePinner.createCertificatePinner())
+        }
+        
+        return builder.build()
     }
     
     @Provides

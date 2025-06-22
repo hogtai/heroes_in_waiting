@@ -2,6 +2,35 @@ const { body, param, query, validationResult } = require('express-validator');
 const logger = require('../utils/logger');
 
 /**
+ * Input sanitization middleware to prevent XSS attacks
+ */
+function sanitizeInput(req, res, next) {
+    // Sanitize all string inputs in body
+    if (req.body) {
+        Object.keys(req.body).forEach(key => {
+            if (typeof req.body[key] === 'string') {
+                req.body[key] = req.body[key]
+                    .replace(/[<>]/g, '') // Remove potential HTML tags
+                    .trim();
+            }
+        });
+    }
+    
+    // Sanitize all string inputs in query
+    if (req.query) {
+        Object.keys(req.query).forEach(key => {
+            if (typeof req.query[key] === 'string') {
+                req.query[key] = req.query[key]
+                    .replace(/[<>]/g, '') // Remove potential HTML tags
+                    .trim();
+            }
+        });
+    }
+    
+    next();
+}
+
+/**
  * Middleware to handle validation errors
  */
 function validateRequest(req, res, next) {
@@ -235,6 +264,7 @@ const validatePagination = [
 
 module.exports = {
   validateRequest,
+  sanitizeInput,
   validateFacilitatorRegistration,
   validateFacilitatorLogin,
   validateClassroomCreation,

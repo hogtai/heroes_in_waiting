@@ -1,5 +1,30 @@
 # Heroes in Waiting - Development Todo
 
+## Current Status: Checkpoint 4 Complete ✅
+**Last Updated:** December 2024  
+**Next Milestone:** Checkpoint 5 - Content Management System
+
+## Pre-Checkpoint 5 Actions (High Priority)
+- [ ] **DBA Tasks:**
+  - [ ] Implement PgBouncer connection pooling for database performance
+  - [ ] Optimize database queries and add missing indexes
+  - [ ] Review and update database backup strategies
+- [ ] **SRE Tasks:**
+  - [ ] Deploy comprehensive monitoring (Prometheus/Grafana)
+  - [ ] Implement enhanced logging and alerting
+  - [ ] Set up health checks and auto-scaling
+- [ ] **Cybersecurity Tasks:**
+  - [ ] Update vulnerable dependencies (axios, lodash)
+  - [ ] Add enhanced security headers
+  - [ ] Enable Android code obfuscation
+  - [ ] Implement certificate pinning for Android
+  - [ ] Complete security hardening measures
+- [ ] **QA Testing:**
+  - [ ] Full scope QA after all remediation changes
+  - [ ] Security testing and vulnerability assessment
+  - [ ] Performance testing and load testing
+  - [ ] End-to-end testing of all features
+
 ## Checkpoint 4: Facilitator Interface Development ✅ COMPLETE
 
 ### ✅ Completed Tasks
