@@ -8,11 +8,14 @@ import com.lifechurch.heroesinwaiting.data.repository.LessonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import java.net.UnknownHostException
+import java.net.SocketTimeoutException
 import javax.inject.Inject
 
 /**
  * ViewModel for Lesson Detail Screen
- * Manages lesson loading, tabbed content, download/bookmark functionality
+ * Manages lesson loading, tabbed content, download/bookmark functionality with enhanced error handling
  */
 @HiltViewModel
 class LessonDetailViewModel @Inject constructor(
@@ -31,17 +34,26 @@ class LessonDetailViewModel @Inject constructor(
     private val _selectedTab = MutableStateFlow(LessonDetailTab.OVERVIEW)
     val selectedTab: StateFlow<LessonDetailTab> = _selectedTab.asStateFlow()
     
+    // Network and Offline State
+    private val _isOffline = MutableStateFlow(false)
+    val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
+    
+    private val _lastSyncTime = MutableStateFlow<Long?>(null)
+    val lastSyncTime: StateFlow<Long?> = _lastSyncTime.asStateFlow()
+    
+    // Retry State
+    private val _retryCount = MutableStateFlow(0)
+    private val _isRetrying = MutableStateFlow(false)
+    val isRetrying: StateFlow<Boolean> = _isRetrying.asStateFlow()
+    
     // Events
     private val _events = MutableSharedFlow<LessonDetailEvent>()
     val events: SharedFlow<LessonDetailEvent> = _events.asSharedFlow()
     
-    // Lesson data from repository
+    // Lesson data from repository with enhanced error handling
     val lesson: StateFlow<Lesson?> = lessonRepository.getLessonById(lessonId)
         .catch { exception ->
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                error = exception.message ?: "Failed to load lesson"
-            )
+            handleLessonLoadError(exception)
         }
         .onStart {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -49,7 +61,8 @@ class LessonDetailViewModel @Inject constructor(
         .onEach { lesson ->
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
-                error = if (lesson == null) "Lesson not found" else null
+                error = if (lesson == null) "Lesson not found" else null,
+                hasCachedData = lesson != null
             )
         }
         .stateIn(
@@ -63,25 +76,130 @@ class LessonDetailViewModel @Inject constructor(
     }
     
     /**
-     * Load lesson details
+     * Enhanced lesson loading with comprehensive error handling
      */
     fun loadLesson(lessonId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _isRetrying.value = false
             
             try {
-                val lesson = lessonRepository.getLessonById(lessonId)
-                _uiState.value = _uiState.value.copy(
-                    lesson = lesson,
-                    isLoading = false,
-                    error = null
+                // Attempt to sync lesson from server if needed
+                lessonRepository.syncLessons().fold(
+                    onSuccess = {
+                        _isOffline.value = false
+                        _lastSyncTime.value = System.currentTimeMillis()
+                        _retryCount.value = 0
+                    },
+                    onFailure = { exception ->
+                        handleSyncError(exception)
+                    }
                 )
             } catch (e: Exception) {
+                handleSyncError(e)
+            }
+        }
+    }
+    
+    /**
+     * Handles lesson loading errors with specific error types
+     */
+    private suspend fun handleLessonLoadError(exception: Throwable) {
+        val errorMessage = when (exception) {
+            is UnknownHostException -> "No internet connection. Using cached lesson."
+            is SocketTimeoutException -> "Connection timed out. Using cached lesson."
+            is SecurityException -> "Authentication required. Please log in again."
+            else -> "Failed to load lesson: ${exception.message}"
+        }
+        
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            error = errorMessage,
+            hasCachedData = lesson.value != null
+        )
+        
+        // Set offline state if appropriate
+        if (exception is UnknownHostException || exception is SocketTimeoutException) {
+            _isOffline.value = true
+        }
+    }
+    
+    /**
+     * Handles sync errors with retry logic
+     */
+    private suspend fun handleSyncError(exception: Throwable) {
+        val hasCachedLesson = lesson.value != null
+        
+        when (exception) {
+            is UnknownHostException -> {
+                _isOffline.value = true
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Failed to load lesson"
+                    error = if (hasCachedLesson) {
+                        "Offline mode. Using cached lesson."
+                    } else {
+                        "No internet connection. Please check your connection and try again."
+                    },
+                    hasCachedData = hasCachedLesson
                 )
             }
+            is SocketTimeoutException -> {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = if (hasCachedLesson) {
+                        "Connection slow. Using cached lesson."
+                    } else {
+                        "Connection timed out. Please try again."
+                    },
+                    hasCachedData = hasCachedLesson
+                )
+            }
+            is SecurityException -> {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Authentication required. Please log in again.",
+                    hasCachedData = hasCachedLesson
+                )
+                _events.emit(LessonDetailEvent.AuthenticationRequired)
+            }
+            else -> {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = if (hasCachedLesson) {
+                        "Unable to sync. Using cached lesson."
+                    } else {
+                        "Failed to load lesson: ${exception.message}"
+                    },
+                    hasCachedData = hasCachedLesson
+                )
+            }
+        }
+    }
+    
+    /**
+     * Retries loading lesson with exponential backoff
+     */
+    fun retryLoadLesson() {
+        viewModelScope.launch {
+            _isRetrying.value = true
+            _retryCount.value += 1
+            
+            // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
+            val backoffDelay = minOf(1000L * (1 shl (_retryCount.value - 1)), 10000L)
+            delay(backoffDelay)
+            
+            loadLesson(lessonId)
+        }
+    }
+    
+    /**
+     * Forces a fresh sync from server
+     */
+    fun forceRefresh() {
+        viewModelScope.launch {
+            _retryCount.value = 0
+            _isOffline.value = false
+            loadLesson(lessonId)
         }
     }
     
@@ -104,36 +222,46 @@ class LessonDetailViewModel @Inject constructor(
     }
     
     /**
-     * Downloads lesson for offline use
+     * Enhanced download functionality with error handling
      */
     fun downloadLesson() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isDownloading = true)
             
             try {
-                lessonRepository.downloadLesson(lessonId)
+                lessonRepository.markLessonAsDownloaded(lessonId)
                 _uiState.value = _uiState.value.copy(
                     isDownloading = false,
-                    lesson = _uiState.value.lesson?.copy(isDownloaded = true)
+                    lesson = _uiState.value.lesson?.copy(isDownloaded = true),
+                    error = null
                 )
                 _events.emit(LessonDetailEvent.LessonDownloaded)
             } catch (e: Exception) {
+                val errorMessage = when (e) {
+                    is UnknownHostException -> "Cannot download while offline. Please check your connection."
+                    is SocketTimeoutException -> "Download timed out. Please try again."
+                    else -> "Failed to download lesson: ${e.message}"
+                }
+                
                 _uiState.value = _uiState.value.copy(
                     isDownloading = false,
-                    error = "Failed to download lesson: ${e.message}"
+                    error = errorMessage
                 )
             }
         }
     }
     
     /**
-     * Removes lesson from offline storage
+     * Enhanced remove download functionality with error handling
      */
     fun removeDownload() {
         viewModelScope.launch {
             try {
                 lessonRepository.removeLessonFromOfflineStorage(lessonId)
-                _uiState.value = _uiState.value.copy(lesson = _uiState.value.lesson?.copy(isDownloaded = false))
+                _uiState.value = _uiState.value.copy(
+                    lesson = _uiState.value.lesson?.copy(isDownloaded = false),
+                    error = null
+                )
                 _events.emit(LessonDetailEvent.LessonDownloadRemoved)
             } catch (exception: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -144,7 +272,7 @@ class LessonDetailViewModel @Inject constructor(
     }
     
     /**
-     * Bookmarks the lesson
+     * Enhanced bookmark functionality with error handling
      */
     fun toggleBookmark() {
         val currentLesson = _uiState.value.lesson ?: return
@@ -153,9 +281,24 @@ class LessonDetailViewModel @Inject constructor(
             try {
                 val updatedLesson = currentLesson.copy(isBookmarked = !currentLesson.isBookmarked)
                 lessonRepository.updateLessonBookmark(currentLesson.id, updatedLesson.isBookmarked)
-                _uiState.value = _uiState.value.copy(lesson = updatedLesson)
+                _uiState.value = _uiState.value.copy(
+                    lesson = updatedLesson,
+                    error = null
+                )
+                
+                if (updatedLesson.isBookmarked) {
+                    _events.emit(LessonDetailEvent.LessonBookmarked)
+                } else {
+                    _events.emit(LessonDetailEvent.LessonUnbookmarked)
+                }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "Failed to update bookmark: ${e.message}")
+                val errorMessage = when (e) {
+                    is UnknownHostException -> "Cannot update bookmark while offline."
+                    is SocketTimeoutException -> "Bookmark update timed out. Please try again."
+                    else -> "Failed to update bookmark: ${e.message}"
+                }
+                
+                _uiState.value = _uiState.value.copy(error = errorMessage)
             }
         }
     }
@@ -167,13 +310,6 @@ class LessonDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _events.emit(LessonDetailEvent.NavigateBack)
         }
-    }
-    
-    /**
-     * Retries loading lesson
-     */
-    fun retryLoadLesson() {
-        loadLesson(lessonId)
     }
     
     /**
@@ -221,10 +357,36 @@ class LessonDetailViewModel @Inject constructor(
     fun getAvailableTabs(): List<LessonDetailTab> {
         return LessonDetailTab.values().toList()
     }
+    
+    /**
+     * Gets offline status message
+     */
+    fun getOfflineStatusMessage(): String? {
+        return if (_isOffline.value) {
+            "Offline mode - using cached lesson"
+        } else {
+            null
+        }
+    }
+    
+    /**
+     * Gets last sync time as formatted string
+     */
+    fun getLastSyncTimeFormatted(): String? {
+        return _lastSyncTime.value?.let { timestamp ->
+            val minutesAgo = (System.currentTimeMillis() - timestamp) / (1000 * 60)
+            when {
+                minutesAgo < 1 -> "Just now"
+                minutesAgo < 60 -> "$minutesAgo minutes ago"
+                minutesAgo < 1440 -> "${minutesAgo / 60} hours ago"
+                else -> "${minutesAgo / 1440} days ago"
+            }
+        }
+    }
 }
 
 /**
- * UI state for Lesson Detail screen
+ * Enhanced UI state for Lesson Detail screen
  */
 data class LessonDetailUiState(
     val lesson: Lesson? = null,
@@ -233,13 +395,22 @@ data class LessonDetailUiState(
     val isDownloading: Boolean = false,
     val isDownloaded: Boolean = false,
     val isBookmarked: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val hasCachedData: Boolean = false,
+    val isOffline: Boolean = false,
+    val lastSyncTime: Long? = null
 ) {
     val showErrorState: Boolean
         get() = !isLoading && error != null
         
     val showLoadingState: Boolean
         get() = isLoading
+        
+    val showOfflineIndicator: Boolean
+        get() = isOffline && hasCachedData
+        
+    val showNoDataState: Boolean
+        get() = !isLoading && error == null && !hasCachedData
 }
 
 /**
@@ -280,7 +451,7 @@ sealed class LessonTabContent {
 }
 
 /**
- * Events for Lesson Detail screen
+ * Enhanced events for Lesson Detail screen
  */
 sealed class LessonDetailEvent {
     data class StartLesson(val lessonId: String) : LessonDetailEvent()
@@ -289,4 +460,7 @@ sealed class LessonDetailEvent {
     object LessonDownloadRemoved : LessonDetailEvent()
     object LessonBookmarked : LessonDetailEvent()
     object LessonUnbookmarked : LessonDetailEvent()
+    object AuthenticationRequired : LessonDetailEvent()
+    object NetworkError : LessonDetailEvent()
+    object SyncCompleted : LessonDetailEvent()
 }

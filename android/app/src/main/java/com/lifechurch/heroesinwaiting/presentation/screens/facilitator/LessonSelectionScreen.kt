@@ -40,6 +40,9 @@ fun LessonSelectionScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedGrade by viewModel.selectedGrade.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val isOffline by viewModel.isOffline.collectAsStateWithLifecycle()
+    val isRetrying by viewModel.isRetrying.collectAsStateWithLifecycle()
+    val lastSyncTime by viewModel.lastSyncTime.collectAsStateWithLifecycle()
     
     // Handle events
     LaunchedEffect(Unit) {
@@ -47,6 +50,15 @@ fun LessonSelectionScreen(
             when (event) {
                 is LessonSelectionEvent.NavigateToLessonDetail -> {
                     onNavigateToLessonDetail(event.lessonId)
+                }
+                is LessonSelectionEvent.AuthenticationRequired -> {
+                    // TODO: Navigate to auth screen
+                }
+                is LessonSelectionEvent.NetworkError -> {
+                    // TODO: Show network error snackbar
+                }
+                is LessonSelectionEvent.SyncCompleted -> {
+                    // TODO: Show sync success snackbar
                 }
             }
         }
@@ -66,40 +78,79 @@ fun LessonSelectionScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    // Offline indicator
+                    if (isOffline) {
+                        IconButton(
+                            onClick = { viewModel.forceRefresh() },
+                            enabled = !isRetrying
+                        ) {
+                            Icon(
+                                Icons.Default.CloudOff,
+                                contentDescription = "Offline mode - tap to refresh",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    
+                    // Refresh button
+                    IconButton(
+                        onClick = { viewModel.forceRefresh() },
+                        enabled = !isRetrying
+                    ) {
+                        if (isRetrying) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
     ) { paddingValues ->
-        
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Main content
-            Column(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Offline status banner
+            if (isOffline && uiState.hasCachedData) {
+                OfflineStatusBanner(
+                    lastSyncTime = lastSyncTime,
+                    onRefresh = { viewModel.forceRefresh() }
+                )
+            }
+            
+            // Search and filter section
+            SearchAndFilterSection(
+                searchQuery = searchQuery,
+                selectedGrade = selectedGrade,
+                selectedCategory = selectedCategory,
+                onSearchQueryChange = viewModel::updateSearchQuery,
+                onGradeSelected = viewModel::updateGradeFilter,
+                onCategorySelected = viewModel::updateCategoryFilter,
+                onClearFilters = viewModel::clearAllFilters,
+                hasActiveFilters = viewModel.hasActiveFilters(),
+                filterSummary = viewModel.getFilterSummary(),
+                gradeOptions = viewModel.getGradeOptions(),
+                categoryOptions = viewModel.getCategoryOptions()
+            )
+            
+            // Content section
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .weight(1f)
             ) {
-                // Search and Filter Section
-                LessonSearchAndFilters(
-                    searchQuery = searchQuery,
-                    selectedGrade = selectedGrade,
-                    selectedCategory = selectedCategory,
-                    onSearchQueryChange = viewModel::updateSearchQuery,
-                    onGradeFilterChange = viewModel::updateGradeFilter,
-                    onCategoryFilterChange = viewModel::updateCategoryFilter,
-                    onClearFilters = viewModel::clearAllFilters,
-                    hasActiveFilters = viewModel.hasActiveFilters(),
-                    filterSummary = viewModel.getFilterSummary(),
-                    gradeOptions = viewModel.getGradeOptions(),
-                    categoryOptions = viewModel.getCategoryOptions()
-                )
-                
-                // Lessons Grid
                 when {
                     uiState.showLoadingState -> {
                         Box(
@@ -115,18 +166,26 @@ fun LessonSelectionScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            HeroesErrorDisplay(
+                            EnhancedErrorDisplay(
                                 message = uiState.error ?: "Failed to load lessons",
-                                onRetry = { viewModel.retryLoadLessons() }
+                                hasCachedData = uiState.hasCachedData,
+                                isOffline = isOffline,
+                                onRetry = { viewModel.retryLoadLessons() },
+                                onUseCachedData = { /* Already using cached data */ }
                             )
                         }
                     }
                     
-                    lessons.isEmpty() && !uiState.showLoadingState -> {
-                        EmptyLessonsState(
-                            hasActiveFilters = viewModel.hasActiveFilters(),
-                            onClearFilters = viewModel::clearAllFilters
-                        )
+                    uiState.showNoDataState -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            EmptyLessonsState(
+                                hasActiveFilters = viewModel.hasActiveFilters(),
+                                onClearFilters = viewModel::clearAllFilters
+                            )
+                        }
                     }
                     
                     else -> {
@@ -142,13 +201,153 @@ fun LessonSelectionScreen(
 }
 
 @Composable
-private fun LessonSearchAndFilters(
+private fun OfflineStatusBanner(
+    lastSyncTime: Long?,
+    onRefresh: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.CloudOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Offline Mode",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                
+                lastSyncTime?.let { timestamp ->
+                    val minutesAgo = (System.currentTimeMillis() - timestamp) / (1000 * 60)
+                    val timeText = when {
+                        minutesAgo < 1 -> "Just now"
+                        minutesAgo < 60 -> "$minutesAgo minutes ago"
+                        minutesAgo < 1440 -> "${minutesAgo / 60} hours ago"
+                        else -> "${minutesAgo / 1440} days ago"
+                    }
+                    
+                    Text(
+                        text = "Last updated: $timeText",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            TextButton(
+                onClick = onRefresh,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("Refresh")
+            }
+        }
+    }
+}
+
+@Composable
+private fun EnhancedErrorDisplay(
+    message: String,
+    hasCachedData: Boolean,
+    isOffline: Boolean,
+    onRetry: () -> Unit,
+    onUseCachedData: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = when {
+                isOffline -> Icons.Default.CloudOff
+                else -> Icons.Default.Error
+            },
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (hasCachedData) {
+                OutlinedButton(
+                    onClick = onUseCachedData,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.OfflineStorage,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Use Cached Data")
+                }
+            }
+            
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Try Again")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchAndFilterSection(
     searchQuery: String,
     selectedGrade: Grade?,
     selectedCategory: LessonCategory?,
     onSearchQueryChange: (String) -> Unit,
-    onGradeFilterChange: (Grade?) -> Unit,
-    onCategoryFilterChange: (LessonCategory?) -> Unit,
+    onGradeSelected: (Grade?) -> Unit,
+    onCategorySelected: (LessonCategory?) -> Unit,
     onClearFilters: () -> Unit,
     hasActiveFilters: Boolean,
     filterSummary: String,
@@ -191,8 +390,8 @@ private fun LessonSearchAndFilters(
             LessonFilterChips(
                 selectedGrade = selectedGrade,
                 selectedCategory = selectedCategory,
-                onGradeSelected = onGradeFilterChange,
-                onCategorySelected = onCategoryFilterChange,
+                onGradeSelected = onGradeSelected,
+                onCategorySelected = onCategorySelected,
                 gradeOptions = gradeOptions,
                 categoryOptions = categoryOptions
             )
