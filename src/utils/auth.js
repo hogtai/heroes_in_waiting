@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const jwtConfig = require('../config/auth');
 
 // Security: Require JWT_SECRET environment variable
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -17,7 +18,12 @@ const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
  * @returns {string} JWT token
  */
 function generateToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, JWT_SECRET, { 
+    expiresIn: JWT_EXPIRES_IN,
+    issuer: jwtConfig.issuer,
+    audience: jwtConfig.audience,
+    algorithm: jwtConfig.algorithm
+  });
 }
 
 /**

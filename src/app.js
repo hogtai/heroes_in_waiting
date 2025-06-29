@@ -34,6 +34,9 @@ const lessonRoutes = require('./routes/lessons');
 const progressRoutes = require('./routes/progress');
 const analyticsRoutes = require('./routes/analytics');
 const enhancedStudentRoutes = require('./routes/enhancedStudent');
+const contentManagementRoutes = require('./routes/contentManagement');
+const lessonContentRoutes = require('./routes/lessonContent');
+const testRoutes = require('./routes/test');
 
 // Import API documentation
 const swaggerSpec = require('./config/swagger');
@@ -84,13 +87,46 @@ app.use((req, res, next) => {
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+app.get('/health', async (req, res) => {
+  try {
+    // Basic health check
+    const healthStatus = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      services: {}
+    };
+
+    // Database health check
+    try {
+      await db.raw('SELECT 1');
+      healthStatus.services.database = { status: 'healthy', timestamp: new Date().toISOString() };
+    } catch (error) {
+      healthStatus.services.database = { status: 'unhealthy', error: error.message, timestamp: new Date().toISOString() };
+      healthStatus.status = 'degraded';
+    }
+
+    // Content management tables health check
+    try {
+      await db('content_versions').count('* as count').first();
+      await db('media_files').count('* as count').first();
+      await db('content_approvals').count('* as count').first();
+      healthStatus.services.contentManagement = { status: 'healthy', timestamp: new Date().toISOString() };
+    } catch (error) {
+      healthStatus.services.contentManagement = { status: 'unhealthy', error: error.message, timestamp: new Date().toISOString() };
+      healthStatus.status = 'degraded';
+    }
+
+    const httpStatus = healthStatus.status === 'ok' ? 200 : 503;
+    res.status(httpStatus).json(healthStatus);
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
 });
 
 // API Documentation
@@ -107,6 +143,9 @@ app.use('/api/lessons', lessonRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/enhanced-students', enhancedStudentRoutes);
+app.use('/api/content', contentManagementRoutes);
+app.use('/api/lesson-content', lessonContentRoutes);
+app.use('/api/test', testRoutes);
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
