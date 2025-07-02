@@ -24,6 +24,11 @@ const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 const { validateRequest } = require('./middleware/validation');
 const securityMiddleware = require('./middleware/security');
+const { 
+  trackAPIPerformance, 
+  trackMobilePerformance, 
+  educationalPerformanceSettings 
+} = require('./middleware/performanceTracking');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -36,6 +41,7 @@ const analyticsRoutes = require('./routes/analytics');
 const enhancedStudentRoutes = require('./routes/enhancedStudent');
 const contentManagementRoutes = require('./routes/contentManagement');
 const lessonContentRoutes = require('./routes/lessonContent');
+const mobileRoutes = require('./routes/mobile');
 const testRoutes = require('./routes/test');
 
 // Import API documentation
@@ -50,6 +56,11 @@ const app = express();
 
 // Enhanced security middleware
 app.use(securityMiddleware);
+
+// Educational performance settings and tracking
+app.use(educationalPerformanceSettings);
+app.use(trackAPIPerformance);
+app.use(trackMobilePerformance);
 
 // CORS configuration
 const corsOptions = {
@@ -145,6 +156,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/enhanced-students', enhancedStudentRoutes);
 app.use('/api/content', contentManagementRoutes);
 app.use('/api/lesson-content', lessonContentRoutes);
+app.use('/api/mobile', mobileRoutes);
 app.use('/api/test', testRoutes);
 
 // 404 handler for API routes

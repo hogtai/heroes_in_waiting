@@ -201,7 +201,7 @@
 - Follow established development patterns and architecture
 - Maintain COPPA compliance throughout all development
 - Coordinate with specialist agents for domain-specific improvements
-- Regular commits and documentation updates
+- Regularily push code commits and documentation updates to the remote origin, omitting any references to claude within your commit messages.
 - Comprehensive testing for all new features
 
 ---
