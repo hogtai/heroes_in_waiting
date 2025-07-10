@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import android.content.Context
 import com.lifechurch.heroesinwaiting.data.local.converters.StringListConverter
+import com.lifechurch.heroesinwaiting.data.local.converters.MapConverter
 import com.lifechurch.heroesinwaiting.data.local.dao.*
 import com.lifechurch.heroesinwaiting.data.local.entities.*
 
@@ -16,12 +17,15 @@ import com.lifechurch.heroesinwaiting.data.local.entities.*
         ScenarioEntity::class,
         ProgressEntity::class,
         ClassroomEntity::class,
-        EmotionalCheckinEntity::class
+        EmotionalCheckinEntity::class,
+        BehavioralAnalyticsEntity::class,
+        AnalyticsEventEntity::class,
+        AnalyticsSyncBatchEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
-@TypeConverters(StringListConverter::class)
+@TypeConverters(StringListConverter::class, MapConverter::class)
 abstract class HeroesDatabase : RoomDatabase() {
     
     abstract fun lessonDao(): LessonDao
@@ -30,6 +34,9 @@ abstract class HeroesDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
     abstract fun classroomDao(): ClassroomDao
     abstract fun emotionalCheckinDao(): EmotionalCheckinDao
+    abstract fun behavioralAnalyticsDao(): BehavioralAnalyticsDao
+    abstract fun analyticsEventDao(): AnalyticsEventDao
+    abstract fun analyticsSyncBatchDao(): AnalyticsSyncBatchDao
     
     companion object {
         const val DATABASE_NAME = "heroes_database"

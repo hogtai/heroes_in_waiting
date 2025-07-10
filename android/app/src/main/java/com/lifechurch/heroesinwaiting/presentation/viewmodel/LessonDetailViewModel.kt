@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifechurch.heroesinwaiting.data.model.*
 import com.lifechurch.heroesinwaiting.data.repository.LessonRepository
+import com.lifechurch.heroesinwaiting.data.analytics.AnalyticsService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -20,11 +21,16 @@ import javax.inject.Inject
 @HiltViewModel
 class LessonDetailViewModel @Inject constructor(
     private val lessonRepository: LessonRepository,
+    private val analyticsService: AnalyticsService,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
     // Extract lesson ID from navigation arguments
     private val lessonId: String = checkNotNull(savedStateHandle["lessonId"])
+    
+    // Analytics tracking variables
+    private var lessonStartTime: Long = 0
+    private var currentClassroomId: String? = null
     
     // UI State
     private val _uiState = MutableStateFlow(LessonDetailUiState())
@@ -73,6 +79,18 @@ class LessonDetailViewModel @Inject constructor(
     
     init {
         loadLesson(lessonId)
+        
+        // Track lesson detail view
+        analyticsService.trackUserInteraction(
+            eventType = "lesson_view",
+            eventAction = "view_lesson_detail",
+            lessonId = lessonId,
+            properties = mapOf(
+                "lesson_id" to lessonId,
+                "view_timestamp" to System.currentTimeMillis()
+            )
+        )
+        lessonStartTime = System.currentTimeMillis()
     }
     
     /**
@@ -204,18 +222,57 @@ class LessonDetailViewModel @Inject constructor(
     }
     
     /**
-     * Updates selected tab
+     * Updates selected tab with analytics tracking
      */
     fun setSelectedTab(tab: LessonDetailTab) {
+        val previousTab = _selectedTab.value
         _selectedTab.value = tab
+        
+        // Track tab interaction
+        analyticsService.trackUserInteraction(
+            eventType = "navigation",
+            eventAction = "change_lesson_tab",
+            lessonId = lessonId,
+            properties = mapOf(
+                "previous_tab" to previousTab.displayName,
+                "new_tab" to tab.displayName,
+                "interaction_timestamp" to System.currentTimeMillis()
+            )
+        )
     }
     
     /**
-     * Starts the lesson
+     * Starts the lesson with analytics tracking
      */
-    fun startLesson() {
+    fun startLesson(classroomId: String = "unknown") {
         viewModelScope.launch {
             lesson.value?.let { currentLesson ->
+                currentClassroomId = classroomId
+                
+                // Track lesson start with behavioral analytics
+                analyticsService.trackLessonStart(
+                    classroomId = classroomId,
+                    lessonId = currentLesson.id,
+                    lessonTitle = currentLesson.title,
+                    gradeLevel = currentLesson.targetGrades.joinToString { it.displayName }
+                )
+                
+                // Track engagement level based on time spent viewing lesson details
+                val timeSpentViewing = System.currentTimeMillis() - lessonStartTime
+                analyticsService.trackUserInteraction(
+                    eventType = "lesson_start",
+                    eventAction = "start_lesson_from_detail",
+                    classroomId = classroomId,
+                    lessonId = currentLesson.id,
+                    properties = mapOf(
+                        "time_spent_viewing_details" to timeSpentViewing,
+                        "lesson_category" to currentLesson.category.name,
+                        "lesson_difficulty" to currentLesson.difficultyLevel.name,
+                        "engagement_preparation" to if (timeSpentViewing > 30000) "thorough" else "quick"
+                    ),
+                    duration = timeSpentViewing
+                )
+                
                 _events.emit(LessonDetailEvent.StartLesson(currentLesson.id))
             }
         }
@@ -237,6 +294,18 @@ class LessonDetailViewModel @Inject constructor(
                             lesson = _uiState.value.lesson?.copy(isDownloaded = true),
                             error = null
                         )
+                        
+                        // Track successful download
+                        analyticsService.trackUserInteraction(
+                            eventType = "content_management",
+                            eventAction = "download_lesson_success",
+                            lessonId = lessonId,
+                            properties = mapOf(
+                                "download_timestamp" to System.currentTimeMillis(),
+                                "preparation_behavior" to "proactive"
+                            )
+                        )
+                        
                         _events.emit(LessonDetailEvent.LessonDownloaded)
                     },
                     onFailure = { exception ->
@@ -302,18 +371,32 @@ class LessonDetailViewModel @Inject constructor(
     }
     
     /**
-     * Enhanced bookmark functionality with error handling
+     * Enhanced bookmark functionality with error handling and analytics tracking
      */
     fun toggleBookmark() {
         val currentLesson = _uiState.value.lesson ?: return
         
         viewModelScope.launch {
             try {
+                val wasBookmarked = currentLesson.isBookmarked
                 val updatedLesson = currentLesson.copy(isBookmarked = !currentLesson.isBookmarked)
                 lessonRepository.updateLessonBookmark(currentLesson.id, updatedLesson.isBookmarked)
                 _uiState.value = _uiState.value.copy(
                     lesson = updatedLesson,
                     error = null
+                )
+                
+                // Track bookmark interaction
+                analyticsService.trackUserInteraction(
+                    eventType = "content_organization",
+                    eventAction = if (updatedLesson.isBookmarked) "bookmark_lesson" else "unbookmark_lesson",
+                    lessonId = currentLesson.id,
+                    properties = mapOf(
+                        "previous_state" to wasBookmarked,
+                        "new_state" to updatedLesson.isBookmarked,
+                        "lesson_category" to currentLesson.category.name,
+                        "organizational_behavior" to if (updatedLesson.isBookmarked) "planning_ahead" else "decluttering"
+                    )
                 )
                 
                 if (updatedLesson.isBookmarked) {
@@ -334,12 +417,50 @@ class LessonDetailViewModel @Inject constructor(
     }
     
     /**
-     * Navigates back to lesson selection
+     * Navigates back to lesson selection with analytics tracking
      */
     fun navigateBack() {
         viewModelScope.launch {
+            // Track lesson detail session completion
+            val sessionDuration = System.currentTimeMillis() - lessonStartTime
+            analyticsService.trackUserInteraction(
+                eventType = "navigation",
+                eventAction = "exit_lesson_detail",
+                lessonId = lessonId,
+                properties = mapOf(
+                    "session_duration" to sessionDuration,
+                    "current_tab" to _selectedTab.value.displayName,
+                    "engagement_level" to when {
+                        sessionDuration > 180000 -> "high" // More than 3 minutes
+                        sessionDuration > 60000 -> "medium" // More than 1 minute
+                        else -> "low"
+                    }
+                ),
+                duration = sessionDuration
+            )
+            
             _events.emit(LessonDetailEvent.NavigateBack)
         }
+    }
+    
+    /**
+     * Called when ViewModel is cleared to track session end
+     */
+    override fun onCleared() {
+        super.onCleared()
+        
+        // Track end of lesson detail session
+        val sessionDuration = System.currentTimeMillis() - lessonStartTime
+        analyticsService.trackUserInteraction(
+            eventType = "session_end",
+            eventAction = "lesson_detail_session_end",
+            lessonId = lessonId,
+            properties = mapOf(
+                "total_session_duration" to sessionDuration,
+                "final_tab" to _selectedTab.value.displayName
+            ),
+            duration = sessionDuration
+        )
     }
     
     /**

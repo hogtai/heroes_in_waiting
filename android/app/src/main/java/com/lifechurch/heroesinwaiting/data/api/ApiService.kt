@@ -181,6 +181,61 @@ interface ApiService {
         @Query("start_date") startDate: String? = null,
         @Query("end_date") endDate: String? = null
     ): Response<ClassroomAnalyticsResponse>
+    
+    // ================== Enhanced Analytics Endpoints ==================
+    
+    @POST("enhanced-analytics/behavioral")
+    suspend fun trackBehavioralAnalytics(
+        @Header("Authorization") token: String,
+        @Body request: BehavioralAnalyticsRequest
+    ): Response<Unit>
+    
+    @POST("enhanced-analytics/behavioral/batch")
+    suspend fun trackBehavioralAnalyticsBatch(
+        @Header("Authorization") token: String,
+        @Body request: BehavioralAnalyticsBatchRequest
+    ): Response<BatchUploadResponse>
+    
+    @GET("enhanced-analytics/classroom/{id}")
+    suspend fun getEnhancedClassroomAnalytics(
+        @Path("id") classroomId: String,
+        @Header("Authorization") token: String,
+        @Query("timeframe") timeframe: String = "30d",
+        @Query("includeComparison") includeComparison: Boolean = false
+    ): Response<EnhancedClassroomAnalyticsResponse>
+    
+    @GET("enhanced-analytics/classroom/{id}/summary")
+    suspend fun getClassroomAnalyticsSummary(
+        @Path("id") classroomId: String,
+        @Header("Authorization") token: String
+    ): Response<ClassroomAnalyticsSummaryResponse>
+    
+    @GET("enhanced-analytics/lesson/{id}")
+    suspend fun getLessonEffectivenessAnalytics(
+        @Path("id") lessonId: String,
+        @Header("Authorization") token: String,
+        @Query("timeframe") timeframe: String = "30d",
+        @Query("includeComparison") includeComparison: Boolean = false
+    ): Response<LessonEffectivenessResponse>
+    
+    @GET("enhanced-analytics/lesson/{id}/trends")
+    suspend fun getLessonTrends(
+        @Path("id") lessonId: String,
+        @Header("Authorization") token: String,
+        @Query("period") period: String = "weekly"
+    ): Response<LessonTrendsResponse>
+    
+    @GET("enhanced-analytics/insights/facilitator")
+    suspend fun getFacilitatorInsights(
+        @Header("Authorization") token: String,
+        @Query("timeframe") timeframe: String = "30d"
+    ): Response<FacilitatorInsightsResponse>
+    
+    @GET("enhanced-analytics/insights/curriculum")
+    suspend fun getCurriculumInsights(
+        @Header("Authorization") token: String,
+        @Query("gradeLevel") gradeLevel: Int? = null
+    ): Response<CurriculumInsightsResponse>
 }
 
 /**

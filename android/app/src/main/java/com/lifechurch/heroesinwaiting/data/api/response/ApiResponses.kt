@@ -403,12 +403,233 @@ data class AnalyticsEventRequest(
     val timestamp: String
 )
 
+// ================== Enhanced Analytics Request Models ==================
+
+data class BehavioralAnalyticsRequest(
+    val classroomId: String,
+    val lessonId: String?,
+    val sessionId: String,
+    val interactionType: String,
+    val timeSpentSeconds: Long,
+    val interactionCount: Int = 1,
+    val behavioralCategory: String,
+    val behavioralIndicators: Map<String, Any> = emptyMap(),
+    val deviceType: String = "mobile",
+    val sessionContext: String,
+    val offlineMode: Boolean = false,
+    val additionalMetadata: Map<String, Any> = emptyMap()
+)
+
+data class BehavioralAnalyticsBatchRequest(
+    val events: List<BehavioralAnalyticsRequest>,
+    val batchId: String,
+    val deviceType: String = "mobile",
+    val appVersion: String,
+    val offlineMode: Boolean = false
+)
+
+data class BatchUploadResponse(
+    val success: Boolean,
+    val processedCount: Int,
+    val failedCount: Int,
+    val batchId: String,
+    val failedEvents: List<String> = emptyList()
+)
+
 data class UpdateFacilitatorRequest(
     val firstName: String?,
     val lastName: String?,
     val organization: String?,
     val role: String?
 )
+
+// ================== Enhanced Analytics Response Models ==================
+
+@Parcelize
+data class EnhancedClassroomAnalyticsResponse(
+    val classroomId: String,
+    val timeframe: String,
+    val engagementMetrics: EngagementMetrics,
+    val behavioralMetrics: BehavioralMetrics,
+    val lessonEffectiveness: List<LessonEffectivenessMetric>,
+    val studentSummaries: List<AnonymousStudentSummary>,
+    val trends: TrendData,
+    val lastUpdated: String
+) : Parcelable
+
+@Parcelize
+data class ClassroomAnalyticsSummaryResponse(
+    val classroomId: String,
+    val totalStudents: Int,
+    val activeStudents: Int,
+    val averageEngagement: Float,
+    val completionRate: Float,
+    val totalLessonsCompleted: Int,
+    val currentStreak: Int,
+    val lastActivity: String
+) : Parcelable
+
+@Parcelize
+data class LessonEffectivenessResponse(
+    val lessonId: String,
+    val effectivenessScore: Float,
+    val engagementMetrics: EngagementMetrics,
+    val behavioralImpact: BehavioralImpactMetrics,
+    val completionStats: CompletionStats,
+    val feedback: LessonFeedbackSummary,
+    val recommendations: List<String>
+) : Parcelable
+
+@Parcelize
+data class LessonTrendsResponse(
+    val lessonId: String,
+    val period: String,
+    val trendData: List<TrendDataPoint>,
+    val summary: TrendSummary
+) : Parcelable
+
+@Parcelize
+data class FacilitatorInsightsResponse(
+    val facilitatorId: String,
+    val timeframe: String,
+    val totalClassrooms: Int,
+    val insights: FacilitatorInsights,
+    val recommendations: List<String>,
+    val lastUpdated: String
+) : Parcelable
+
+@Parcelize
+data class CurriculumInsightsResponse(
+    val gradeLevel: String,
+    val insights: CurriculumInsights,
+    val lessons: List<LessonEffectivenessMetric>,
+    val lastUpdated: String
+) : Parcelable
+
+// ================== Supporting Analytics Data Models ==================
+
+@Parcelize
+data class EngagementMetrics(
+    val averageEngagementScore: Float,
+    val interactionRate: Float,
+    val timeSpentAverage: Long,
+    val completionRate: Float,
+    val dropOffPoints: List<String>
+) : Parcelable
+
+@Parcelize
+data class BehavioralMetrics(
+    val empathyScore: Float,
+    val confidenceScore: Float,
+    val communicationScore: Float,
+    val leadershipScore: Float,
+    val improvementAreas: List<String>
+) : Parcelable
+
+@Parcelize
+data class BehavioralImpactMetrics(
+    val overallImpact: Float,
+    val categoryImpacts: Map<String, Float>,
+    val improvement: Float,
+    val trend: String
+) : Parcelable
+
+@Parcelize
+data class LessonEffectivenessMetric(
+    val lessonId: String,
+    val lessonTitle: String,
+    val effectivenessScore: Float,
+    val engagementScore: Float,
+    val completionRate: Float,
+    val averageTimeSpent: Long,
+    val totalImplementations: Int
+) : Parcelable
+
+@Parcelize
+data class AnonymousStudentSummary(
+    val sessionId: String,
+    val engagementLevel: String,
+    val progressPercentage: Float,
+    val lessonsCompleted: Int,
+    val lastActivity: String,
+    val behavioralGrowth: Float
+) : Parcelable
+
+@Parcelize
+data class TrendData(
+    val engagement: List<TrendDataPoint>,
+    val behavioral: List<TrendDataPoint>,
+    val completion: List<TrendDataPoint>
+) : Parcelable
+
+@Parcelize
+data class TrendDataPoint(
+    val date: String,
+    val value: Float,
+    val metadata: Map<String, Any> = emptyMap()
+) : Parcelable
+
+@Parcelize
+data class TrendSummary(
+    val direction: String, // "increasing", "decreasing", "stable"
+    val changePercentage: Float,
+    val significance: String, // "high", "medium", "low"
+    val keyFactors: List<String>
+) : Parcelable
+
+@Parcelize
+data class CompletionStats(
+    val totalAttempts: Int,
+    val completionRate: Float,
+    val averageTimeToComplete: Long,
+    val commonExitPoints: List<String>
+) : Parcelable
+
+@Parcelize
+data class LessonFeedbackSummary(
+    val averageRating: Float,
+    val totalFeedbacks: Int,
+    val positiveKeywords: List<String>,
+    val improvementSuggestions: List<String>
+) : Parcelable
+
+@Parcelize
+data class FacilitatorInsights(
+    val engagement: InsightCategory,
+    val behavioral: InsightCategory,
+    val curriculum: InsightCategory
+) : Parcelable
+
+@Parcelize
+data class CurriculumInsights(
+    val overview: CurriculumOverview,
+    val topPerformingLessons: List<LessonEffectivenessMetric>,
+    val improvementOpportunities: List<LessonImprovementOpportunity>
+) : Parcelable
+
+@Parcelize
+data class InsightCategory(
+    val trend: String,
+    val avgScore: Float,
+    val recommendations: List<String>
+) : Parcelable
+
+@Parcelize
+data class CurriculumOverview(
+    val totalLessons: Int,
+    val avgEngagement: Float,
+    val avgBehavioralImpact: Float,
+    val totalImplementations: Int
+) : Parcelable
+
+@Parcelize
+data class LessonImprovementOpportunity(
+    val lessonId: String,
+    val title: String,
+    val currentScore: Float,
+    val improvementPotential: Float,
+    val suggestions: List<String>
+) : Parcelable
 
 /**
  * Standard API Error Response

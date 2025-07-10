@@ -70,4 +70,19 @@ object DatabaseModule {
     fun provideEmotionalCheckinDao(database: HeroesDatabase): EmotionalCheckinDao {
         return database.emotionalCheckinDao()
     }
+    
+    @Provides
+    fun provideBehavioralAnalyticsDao(database: HeroesDatabase): BehavioralAnalyticsDao {
+        return database.behavioralAnalyticsDao()
+    }
+    
+    @Provides
+    fun provideAnalyticsEventDao(database: HeroesDatabase): AnalyticsEventDao {
+        return database.analyticsEventDao()
+    }
+    
+    @Provides
+    fun provideAnalyticsSyncBatchDao(database: HeroesDatabase): AnalyticsSyncBatchDao {
+        return database.analyticsSyncBatchDao()
+    }
 }
