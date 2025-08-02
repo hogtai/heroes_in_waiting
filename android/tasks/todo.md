@@ -1213,3 +1213,354 @@ Successfully implemented comprehensive database integrity and performance testin
 5. **Legal Review**: Final COPPA compliance verification with legal team
 
 The Heroes in Waiting enhanced analytics database testing framework is production-ready and provides comprehensive validation for COPPA compliance, educational effectiveness measurement, and system performance requirements.
+
+---
+
+# Heroes in Waiting: Comprehensive QA Test Plan for Mobile Analytics
+
+## 📋 QA Test Plan Overview
+
+**Platform**: Android (API 24-34, multiple device sizes)  
+**Focus**: Mobile Analytics Functionality Testing  
+**Compliance**: COPPA Educational Standards  
+**Architecture**: Offline-First with Real-time Dashboard Sync  
+
+## 🎯 Mobile Analytics Features Under Test
+
+### 1. **Behavioral Analytics Tracking**
+- **Empathy Development**: 1-5 scoring, response quality, emotional context, peer interaction
+- **Confidence Building**: Participation level, voice volume, eye contact, support needs
+- **Communication Skills**: Listening quality, response relevance, turn-taking, group dynamics
+- **Leadership Behavior**: Initiative level, peer response, task completion, helping others
+
+### 2. **COPPA Compliance System**
+- **Zero PII Collection**: Automated PII detection and prevention
+- **Anonymous Student Tracking**: SHA-256 hashed identifiers with daily salt rotation
+- **Facilitator Consent Management**: COPPA-compliant consent workflow
+- **Data Retention**: 90-day default cleanup with educational purpose restriction
+
+### 3. **Offline-First Analytics Architecture**
+- **Local Collection**: Room database storage with automatic validation
+- **Background Sync**: WorkManager with adaptive network strategies
+- **Data Integrity**: Cross-platform consistency and conflict resolution
+- **Performance**: Sub-100ms operations with minimal battery impact
+
+### 4. **Educational Impact Measurement**
+- **Lesson Effectiveness**: Pre/post assessment tracking and curriculum optimization
+- **Student Growth**: Anonymous longitudinal development tracking
+- **Engagement Metrics**: Multi-factor engagement scoring algorithms
+- **Real-time Insights**: Dashboard synchronization for facilitator analytics
+
+---
+
+## 📊 Testing Matrix by Priority
+
+### 🔴 **CRITICAL (P0) - Production Blockers**
+
+#### 1. COPPA Compliance Validation
+**Test Cases**: 25 scenarios  
+**Focus**: Zero PII collection, anonymous tracking, data retention
+
+| Test Scenario | Expected Result | Validation Method |
+|---------------|----------------|-------------------|
+| PII Detection in Analytics Events | No emails, phones, addresses detected | Regex pattern validation |
+| Anonymous Session Consistency | Same hashed ID across lesson | Session tracking verification |
+| Data Retention Enforcement | Auto-cleanup after 90 days | Database retention testing |
+| Facilitator Consent Withdrawal | Complete data purging | Compliance audit validation |
+
+#### 2. Behavioral Analytics Accuracy
+**Test Cases**: 20 scenarios  
+**Focus**: Educational measurement precision
+
+| Behavioral Category | Test Method | Success Criteria |
+|-------------------|-------------|------------------|
+| Empathy (1-5 scale) | Simulated scenarios | ±0.2 accuracy in scoring |
+| Confidence (participation) | UI interaction tracking | Correct level classification |
+| Communication (quality) | Peer interaction simulation | Accurate quality assessment |
+| Leadership (initiative) | Group activity tracking | Proper behavior identification |
+
+#### 3. Offline-First Reliability
+**Test Cases**: 15 scenarios  
+**Focus**: Network condition handling
+
+| Network Condition | Test Scenario | Expected Behavior |
+|------------------|---------------|-------------------|
+| Complete Offline | Lesson interactions | Local storage, no data loss |
+| Intermittent Connectivity | Sync retry mechanism | Exponential backoff, eventual sync |
+| Network Restoration | Pending data sync | Complete data transmission |
+| Poor Connection | Adaptive batching | Efficient data transfer |
+
+---
+
+### 🟡 **HIGH (P1) - Quality Assurance**
+
+#### 4. Performance & Battery Optimization
+**Test Cases**: 12 scenarios  
+**Focus**: Mobile optimization
+
+| Performance Metric | Target | Test Method |
+|-------------------|--------|-------------|
+| UI Response Time | <100ms with analytics | Espresso performance testing |
+| Battery Drain | <2% additional usage | Android Profiler monitoring |
+| Memory Usage | <50MB analytics overhead | Memory leak detection |
+| Sync Performance | <30s large dataset | Background sync timing |
+
+#### 5. Cross-Platform Data Sync
+**Test Cases**: 10 scenarios  
+**Focus**: Web dashboard integration
+
+| Sync Scenario | Validation | Success Criteria |
+|---------------|------------|------------------|
+| Real-time Analytics | Mobile → Web dashboard | <5s latency |
+| Aggregation Consistency | Cross-platform calculations | Identical results |
+| Timezone Handling | Multi-region sync | Correct timestamp conversion |
+| Data Format Standards | JSON schema validation | 100% compatibility |
+
+---
+
+### 🟢 **MEDIUM (P2) - Feature Completeness**
+
+#### 6. Educational Analytics Workflows
+**Test Cases**: 18 scenarios  
+**Focus**: Complete lesson workflows
+
+| Workflow Stage | Analytics Captured | Validation Method |
+|---------------|--------------------|-------------------|
+| Lesson Start | Engagement initiation | Event tracking verification |
+| Activity Participation | Behavioral indicators | Multi-category scoring |
+| Emotional Check-in | Wellbeing assessment | Anonymous emotional data |
+| Lesson Completion | Growth measurements | Progress indicator calculation |
+
+#### 7. Error Handling & Recovery
+**Test Cases**: 15 scenarios  
+**Focus**: System resilience
+
+| Error Scenario | Expected Recovery | Test Validation |
+|----------------|------------------|-----------------|
+| Database Corruption | Automatic repair | Data integrity check |
+| Sync Failures | Retry with backoff | Error handling verification |
+| Low Storage | Graceful degradation | User notification testing |
+| Network Timeouts | Queue management | Pending data preservation |
+
+---
+
+## 🧪 Test Implementation Strategy
+
+### **Phase 1: Automated Testing Foundation (Week 1)**
+
+#### Unit Testing (90%+ Coverage)
+```kotlin
+// Example: Behavioral Analytics Accuracy
+@Test
+fun `empathy tracking calculates correct score range`() {
+    val empathyScore = analyticsService.calculateEmpathyScore(
+        response = "comfort_offer",
+        context = "peer_distress",
+        quality = "high"
+    )
+    assertThat(empathyScore).isInRange(4.0f, 5.0f)
+}
+```
+
+#### Integration Testing
+```kotlin
+// Example: COPPA Compliance Validation
+@Test
+fun `analytics events contain no PII patterns`() = runTest {
+    val analytics = analyticsRepository.getAllAnalytics()
+    analytics.forEach { event ->
+        val complianceResult = coppaValidator.validateEvent(event)
+        assertThat(complianceResult.isCompliant).isTrue()
+    }
+}
+```
+
+### **Phase 2: UI/UX Testing (Week 2)**
+
+#### Espresso Instrumentation Tests
+```kotlin
+// Example: Lesson Analytics UI Integration
+@Test
+fun testLessonInteractionTracking() {
+    composeTestRule.onNodeWithText("Start Lesson").performClick()
+    
+    runTest {
+        val analytics = testUtils.getStoredAnalytics()
+        assertThat(analytics).hasLessonStartEvent()
+        assertThat(analytics).isCOPPACompliant()
+    }
+}
+```
+
+#### Performance Testing
+- **Memory Profiling**: Monitor analytics impact on app performance
+- **Battery Testing**: Validate <2% additional battery drain
+- **UI Responsiveness**: Ensure analytics doesn't slow interactions
+
+### **Phase 3: Cross-Platform Validation (Week 3)**
+
+#### Real-World Scenarios
+- **Multi-Device Testing**: Tablets, phones, different screen sizes
+- **Network Condition Simulation**: WiFi, cellular, offline scenarios
+- **Data Volume Testing**: 1000+ analytics events, large dataset sync
+
+#### Dashboard Integration
+- **Real-time Sync**: Mobile analytics → Web dashboard
+- **Data Accuracy**: Cross-platform calculation verification
+- **Export Functionality**: Educational report generation
+
+---
+
+## 📱 Device Testing Matrix
+
+### **Primary Test Devices**
+
+| Device Type | OS Version | Screen Size | Test Focus |
+|-------------|------------|-------------|------------|
+| Google Pixel 6 | Android 12 (API 31) | 6.4" | Primary testing device |
+| Samsung Galaxy Tab A8 | Android 11 (API 30) | 10.5" | Tablet UI analytics |
+| OnePlus 9 | Android 13 (API 33) | 6.55" | Performance optimization |
+| Motorola Moto G | Android 10 (API 29) | 6.2" | Lower-end device testing |
+| Samsung Galaxy S21 | Android 12 (API 31) | 6.2" | Samsung-specific testing |
+
+### **Secondary Test Devices**
+
+| Device Type | OS Version | Test Scenarios |
+|-------------|------------|----------------|
+| Android Emulator | API 24-34 | Compatibility testing |
+| Firebase Test Lab | Multiple devices | Automated testing |
+| Physical Device Farm | Real devices | Performance validation |
+
+---
+
+## 🔧 Test Automation & CI/CD
+
+### **Automated Test Pipeline**
+
+```yaml
+# Example GitHub Actions workflow
+- name: Mobile Analytics Tests
+  run: |
+    ./gradlew testDebugUnitTest
+    ./gradlew connectedAndroidTest
+    ./gradlew coppaComplianceValidation
+    ./gradlew performanceBenchmarkTest
+```
+
+### **Quality Gates**
+
+| Quality Metric | Threshold | Action on Failure |
+|----------------|-----------|-------------------|
+| Unit Test Coverage | >90% | Block deployment |
+| COPPA Compliance | 100% | Critical alert |
+| Performance Impact | <5% overhead | Performance review |
+| Battery Drain | <2% additional | Optimization required |
+
+---
+
+## 📈 Success Criteria & KPIs
+
+### **Functional Requirements**
+
+- ✅ **Analytics Accuracy**: 95%+ behavioral measurement precision
+- ✅ **COPPA Compliance**: 100% zero PII collection validation
+- ✅ **Offline Reliability**: 99.9% data preservation during network issues
+- ✅ **Sync Performance**: <30 seconds for large dataset synchronization
+- ✅ **UI Responsiveness**: <100ms response time with analytics enabled
+
+### **Non-Functional Requirements**
+
+- ✅ **Battery Impact**: <2% additional battery drain from analytics
+- ✅ **Memory Usage**: <50MB analytics system overhead
+- ✅ **Cross-Platform Sync**: <5 second latency mobile → web dashboard
+- ✅ **Data Integrity**: 100% consistency across platforms
+- ✅ **Error Recovery**: <1% failure rate with automatic retry
+
+---
+
+## 🚀 Test Execution Schedule
+
+### **Week 1: Foundation Testing**
+- **Day 1-2**: Unit test execution and coverage validation
+- **Day 3-4**: COPPA compliance testing suite
+- **Day 5**: Integration testing and database validation
+
+### **Week 2: UI & Performance Testing**
+- **Day 1-2**: Espresso instrumentation tests
+- **Day 3-4**: Performance profiling and optimization
+- **Day 5**: Battery and memory usage validation
+
+### **Week 3: Cross-Platform & Edge Cases**
+- **Day 1-2**: Real-world scenario testing
+- **Day 3-4**: Network condition and error handling
+- **Day 5**: Dashboard integration and data sync
+
+### **Week 4: Production Readiness**
+- **Day 1-2**: End-to-end workflow validation
+- **Day 3-4**: Security and privacy audit
+- **Day 5**: Final QA sign-off and documentation
+
+---
+
+## 📋 Test Deliverables
+
+### **Test Documentation**
+1. **Test Plan Document** - Comprehensive testing strategy (this document)
+2. **Test Cases Specification** - Detailed test scenarios and expected results
+3. **COPPA Compliance Report** - Privacy validation and legal compliance
+4. **Performance Benchmark Report** - System performance analysis
+5. **Cross-Platform Validation Report** - Data consistency verification
+
+### **Quality Assurance Artifacts**
+1. **Test Coverage Report** - Code coverage analysis (target: >90%)
+2. **Defect Tracking Report** - Issue identification and resolution status
+3. **Performance Metrics Dashboard** - Real-time system performance monitoring
+4. **Compliance Certification** - COPPA compliance validation certificate
+5. **Production Readiness Checklist** - Final deployment validation
+
+---
+
+## 🔍 Risk Assessment & Mitigation
+
+### **High-Risk Areas**
+
+| Risk Area | Impact | Probability | Mitigation Strategy |
+|-----------|---------|-------------|-------------------|
+| COPPA Compliance Violation | Critical | Low | Automated PII detection, legal review |
+| Performance Degradation | High | Medium | Continuous performance monitoring |
+| Data Loss During Sync | High | Low | Robust error handling, data validation |
+| Cross-Platform Inconsistency | Medium | Medium | Automated data integrity checks |
+
+### **Mitigation Strategies**
+
+1. **Automated Testing Pipeline**: Comprehensive CI/CD with quality gates
+2. **Performance Monitoring**: Real-time analytics impact measurement
+3. **Legal Review Process**: COPPA compliance validation with legal team
+4. **Incremental Rollout**: Phased deployment with monitoring at each stage
+5. **Emergency Response Plan**: Rapid rollback capability for critical issues
+
+---
+
+## ✅ QA Sign-off Criteria
+
+### **Production Readiness Checklist**
+
+- [ ] **All Critical (P0) tests passing** - 100% success rate
+- [ ] **COPPA Compliance validated** - Zero PII collection confirmed
+- [ ] **Performance targets met** - <5% app performance impact
+- [ ] **Cross-platform sync verified** - Data consistency across mobile/web
+- [ ] **Error handling tested** - Graceful degradation under all conditions
+- [ ] **Security audit completed** - Privacy and data protection validated
+- [ ] **Legal review approved** - COPPA compliance legally verified
+- [ ] **Documentation complete** - All test artifacts delivered
+
+### **Final QA Approval**
+
+**QA Test Lead Approval**: [ ] Ready for Production Deployment  
+**COPPA Compliance Officer**: [ ] Privacy Requirements Met  
+**Performance Engineer**: [ ] System Performance Validated  
+**Product Owner**: [ ] Educational Requirements Satisfied  
+
+---
+
+**This comprehensive QA test plan ensures the Heroes in Waiting mobile analytics system meets all educational, privacy, and performance requirements while delivering accurate behavioral insights for elementary students in a COPPA-compliant manner.**
